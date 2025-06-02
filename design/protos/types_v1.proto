@@ -45,15 +45,20 @@ message TimeBasedValueList {
 
 // Request message for reading an entity
 message ReadEntityRequest {
-    string id = 1;
-    Entity entity = 2;
-    repeated string output = 3;  // Specifies which parts of the entity to return
+    Entity entity = 1;
+    repeated string output = 2;  // Specifies which parts of the entity to return
+}
+
+// EntityList represents a list of entities
+message EntityList {
+    repeated Entity entities = 1;
 }
 
 // Service definition for CRUD operations
 service CrudService {
     rpc CreateEntity(Entity) returns (Entity);
     rpc ReadEntity(ReadEntityRequest) returns (Entity);
+    rpc ReadEntities(ReadEntityRequest) returns (EntityList);
     rpc UpdateEntity(UpdateEntityRequest) returns (Entity);
     rpc DeleteEntity(EntityId) returns (Empty);
 }

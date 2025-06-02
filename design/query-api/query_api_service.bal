@@ -5,6 +5,7 @@ import ballerina/http;
 import ballerina/protobuf.types.'any;
 import ballerina/os;
 import ballerina/lang.'int as langint;
+import ballerina/io;
 
 string crudHostname = os:getEnv("CRUD_SERVICE_HOST");
 string queryHostname = os:getEnv("QUERY_SERVICE_HOST");
@@ -41,7 +42,7 @@ service /v1 on ep0 {
     # Get entity attribute
     #
     # + return - Attribute value(s) 
-    resource function get entities/[string entityId]/attributes/[string attributeName](string? startTime, string? endTime) returns inline_response_200_1|http:NotFound|error {
+    resource function get entities/[string entityId]/attributes/[string attributeName](string? startTime, string? endTime) returns inline_response_200_2|http:NotFound|error {
         // Create entity filter with specific attribute and time range
         Entity entityFilter = {
             id: entityId,
@@ -82,7 +83,6 @@ service /v1 on ep0 {
         
         // Create ReadEntityRequest with output field set to attributes only
         ReadEntityRequest request = {
-            id: entityId,
             entity: entityFilter,
             output: ["attributes"]  // Only request attributes field
         };
@@ -161,7 +161,6 @@ service /v1 on ep0 {
 
         // Create ReadEntityRequest with output field set to metadata only
         ReadEntityRequest request = {
-            id: entityId,
             entity: entityFilter,
             output: ["metadata"]  // Only request metadata field
         };
@@ -191,7 +190,7 @@ service /v1 on ep0 {
     # Get all related entity IDs
     #
     # + return - List of all related entities 
-    resource function post entities/[string entityId]/allrelations() returns InlineResponse2002ArrayOk|error {
+    resource function post entities/[string entityId]/allrelations() returns InlineResponse2003ArrayOk|error {
         // Create entity filter without any relationship filtering criteria
         Entity entityFilter = {
             id: entityId,
@@ -216,7 +215,6 @@ service /v1 on ep0 {
 
         // Create ReadEntityRequest with output field set to relationships only
         ReadEntityRequest request = {
-            id: entityId,
             entity: entityFilter,
             output: ["relationships"]  // Only request relationships field
         };
@@ -225,7 +223,7 @@ service /v1 on ep0 {
         Entity entity = check ep->ReadEntity(request);
 
         // Process the relationships returned by the backend
-        inline_response_200_2[] relationships = [];
+        inline_response_200_3[] relationships = [];
 
         foreach var relEntry in entity.relationships {
             Relationship rel = relEntry.value;
@@ -246,7 +244,7 @@ service /v1 on ep0 {
     # Get related entity IDs
     #
     # + return - List of related entities 
-    resource function post entities/[string entityId]/relations(@http:Payload entityId_relations_body payload) returns InlineResponse2002ArrayOk|error {
+    resource function post entities/[string entityId]/relations(@http:Payload entityId_relations_body payload) returns InlineResponse2003ArrayOk|error {
         // Create entity filter with embedded relationship criteria
         Entity entityFilter = {
             id: entityId,
@@ -282,7 +280,6 @@ service /v1 on ep0 {
         
         // Create ReadEntityRequest with output field set to relationships only
         ReadEntityRequest request = {
-            id: entityId,
             entity: entityFilter,
             output: ["relationships"]  // Only request relationships field
         };
@@ -291,7 +288,7 @@ service /v1 on ep0 {
         Entity entity = check ep->ReadEntity(request);
         
         // Process the relationships returned by the backend
-        inline_response_200_2[] relationships = [];
+        inline_response_200_3[] relationships = [];
         
         foreach var relEntry in entity.relationships {
             Relationship rel = relEntry.value;
@@ -311,9 +308,83 @@ service /v1 on ep0 {
 
     # Find entities based on criteria
     #
-    # + return - List of matching entity IDs 
-    resource function post entities/search(@http:Payload entities_search_body payload) returns InlineResponse200Ok|error {
-        // Create entity filter with search criteria from payload
-        return {body: {body: []}};
+    # + return - List of matching entities 
+    resource function post entities/search(@http:Payload entities_search_body payload) returns InlineResponse2001Ok|http:BadRequest|error {
+        // Safely extract kind major and minor
+        string kindMajor = "";
+        string kindMinor = "";
+        if payload.kind is () || (<entitiessearch_kind>payload.kind)?.major is (){
+            return <http:BadRequest> {
+                body: {
+                    "error": "Invalid search criteria",
+                    "details": "Kind.Major is required for filtering entities"
+                }
+            };
+        } else {
+            kindMajor = (<entitiessearch_kind>payload.kind)?.major ?: "";
+            kindMinor = (<entitiessearch_kind>payload.kind)?.minor ?: "";
+            
+            if kindMajor == "" || (<entitiessearch_kind>payload.kind)?.major is () {
+                return <http:BadRequest> {
+                    body: {
+                        "error": "Invalid search criteria",
+                        "details": "Kind.Major is required for filtering entities"
+                    }
+                };
+            }
+        }
+
+        Entity entityFilter = {
+            id: "",
+            kind: {
+                major: kindMajor,
+                minor: kindMinor
+            },
+            created: payload.created ?: "",
+            terminated: payload.terminated ?: "",
+            name: {
+                startTime: "",
+                endTime: "",
+                value: check 'any:pack(payload.name ?: "")
+            },
+            metadata: [],
+            attributes: [],
+            relationships: []
+        };
+
+        ReadEntityRequest request = {
+            entity: entityFilter,
+            output: [] // Return all fields by default
+        };
+
+        // Call the ReadEntities method
+        EntityList|error entityList = ep->ReadEntities(request);
+        if entityList is error {
+            io:println(string `Error reading entities: ${entityList.message()}`);
+            
+            return <http:BadRequest> {
+                body: {
+                    "error": "Invalid search criteria",
+                    "details": entityList.message()
+                }
+            };
+        }
+
+        // Map the result to the expected response format
+        record {string id?; record {string major?; string? minor?;} kind?; string name?; string created?; string? terminated?;}[] response = [];
+        foreach var entity in entityList.entities {
+            response.push({
+                id: entity.id,
+                kind: {major: entity.kind.major, minor: entity.kind.minor},
+                name: extractValueAsString(entity.name.value),
+                created: entity.created,
+                terminated: entity.terminated
+            });
+        }
+        return <InlineResponse2001Ok> {
+            body: {
+                body: response
+            }
+        };
     }
 }

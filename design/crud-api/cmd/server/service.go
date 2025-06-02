@@ -72,11 +72,11 @@ func (s *Server) CreateEntity(ctx context.Context, req *pb.Entity) (*pb.Entity, 
 
 // ReadEntity retrieves an entity's metadata
 func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb.Entity, error) {
-	log.Printf(">>>> Reading Entity: %s with output fields: %v", req.Id, req.Output)
+	log.Printf("Reading Entity: %s with output fields: %v", req.Entity.Id, req.Output)
 
 	// Initialize a complete response entity with empty fields
 	response := &pb.Entity{
-		Id:            req.Id,
+		Id:            req.Entity.Id,
 		Kind:          &pb.Kind{},
 		Name:          &pb.TimeBasedValue{},
 		Created:       "",
@@ -87,7 +87,7 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 	}
 
 	// Always fetch basic entity info from Neo4j
-	kind, name, created, terminated, err := s.neo4jRepo.GetGraphEntity(ctx, req.Id)
+	kind, name, created, terminated, err := s.neo4jRepo.GetGraphEntity(ctx, req.Entity.Id)
 	if err != nil {
 		log.Printf("Error fetching entity info: %v", err)
 		// Continue processing as we might still be able to get other information
@@ -105,12 +105,12 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 
 	// Process each requested output field
 	for _, field := range req.Output {
-		log.Printf("[DEBUG] Entering switch statement for entity ID: %s", req.Id)
+		log.Printf("[DEBUG] Entering switch statement for entity ID: %s", req.Entity.Id)
 		switch field {
 		case "metadata":
-			log.Printf("[DEBUG] Processing metadata field for entity ID: %s", req.Id)
+			log.Printf("[DEBUG] Processing metadata field for entity ID: %s", req.Entity.Id)
 			// Get metadata from MongoDB
-			metadata, err := s.mongoRepo.GetMetadata(ctx, req.Id)
+			metadata, err := s.mongoRepo.GetMetadata(ctx, req.Entity.Id)
 			if err != nil {
 				log.Printf("Error fetching metadata: %v", err)
 				// Continue with other fields even if metadata fails
@@ -131,10 +131,10 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 
 				// Case 2: Call GetRelationshipsByName for each relationship
 				for _, rel := range req.Entity.Relationships {
-					log.Printf("Fetching related entity IDs for entity %s with relationship %s and start time %s", req.Id, rel.Name, rel.StartTime)
-					relsByName, err := s.neo4jRepo.GetRelationshipsByName(ctx, req.Id, rel.Name, rel.StartTime)
+					log.Printf("Fetching related entity IDs for entity %s with relationship %s and start time %s", req.Entity.Id, rel.Name, rel.StartTime)
+					relsByName, err := s.neo4jRepo.GetRelationshipsByName(ctx, req.Entity.Id, rel.Name, rel.StartTime)
 					if err != nil {
-						log.Printf("Error fetching related entity IDs for entity %s: %v", req.Id, err)
+						log.Printf("Error fetching related entity IDs for entity %s: %v", req.Entity.Id, err)
 						continue // Continue with other relationships even if one fails
 					}
 
@@ -145,10 +145,10 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 				}
 			} else {
 				// Case 3: If no specific relationships requested, get all relationships
-				log.Printf("Fetching all relationships for entity %s", req.Id)
-				graphRelationships, err := s.neo4jRepo.GetGraphRelationships(ctx, req.Id)
+				log.Printf("Fetching all relationships for entity %s", req.Entity.Id)
+				graphRelationships, err := s.neo4jRepo.GetGraphRelationships(ctx, req.Entity.Id)
 				if err != nil {
-					log.Printf("Error fetching relationships for entity %s: %v", req.Id, err)
+					log.Printf("Error fetching relationships for entity %s: %v", req.Entity.Id, err)
 					// Continue with other fields even if relationships fail
 				} else {
 					response.Relationships = graphRelationships
@@ -239,6 +239,54 @@ func (s *Server) DeleteEntity(ctx context.Context, req *pb.EntityId) (*pb.Empty,
 	// TODO: Implement Entity Deletion in Neo4j
 	// TODO: Implement Attribute Deletion in Neo4j
 	return &pb.Empty{}, nil
+}
+
+// ReadEntities retrieves a list of entities filtered by base attributes
+func (s *Server) ReadEntities(ctx context.Context, req *pb.ReadEntityRequest) (*pb.EntityList, error) {
+	if req.Entity == nil || req.Entity.Kind == nil || req.Entity.Kind.Major == "" {
+		return nil, fmt.Errorf("Kind.Major is required for filtering entities")
+	}
+
+	log.Printf("Filtering entities by Kind.Major: %s", req.Entity.Kind.Major)
+
+	// Use HandleGraphEntityFilter to get filtered entities
+	filteredEntities, err := s.neo4jRepo.HandleGraphEntityFilter(ctx, req)
+	if err != nil {
+		log.Printf("Error filtering entities: %v", err)
+		return nil, err
+	}
+
+	// Convert filtered entities to pb.Entity format
+	var entities []*pb.Entity
+	for _, entity := range filteredEntities {
+		pbEntity := &pb.Entity{
+			Id: entity["id"].(string),
+			Kind: &pb.Kind{
+				Major: entity["kind"].(string),
+				Minor: entity["minorKind"].(string),
+			},
+			Created: entity["created"].(string),
+			Name: &pb.TimeBasedValue{ // How to represent time based value name?
+				StartTime: entity["created"].(string),
+				Value: &anypb.Any{
+					TypeUrl: "type.googleapis.com/google.protobuf.StringValue",
+					Value:   []byte(entity["name"].(string)),
+				},
+			},
+		}
+
+		// Add terminated if present
+		if terminated, ok := entity["terminated"].(string); ok && terminated != "" {
+			pbEntity.Terminated = terminated
+			pbEntity.Name.EndTime = terminated
+		}
+
+		entities = append(entities, pbEntity)
+	}
+
+	return &pb.EntityList{
+		Entities: entities,
+	}, nil
 }
 
 // Start the gRPC server
