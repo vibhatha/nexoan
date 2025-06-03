@@ -2,7 +2,7 @@
 # This specification defines how different data types should be represented in JSON format
 
 version: "0.1.0"
-description: "Specification for representing various data structures in JSON format for data insertion or querying"
+description: "Data insertion or querying taken place in the Update API or the Query API requires a certain format when feeding the attributes."
 
 types:
   scalar:
