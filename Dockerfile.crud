@@ -45,6 +45,10 @@ WORKDIR /app
 # Copy the source code
 COPY . .
 
+## Create a new user with UID 10014
+RUN addgroup -g 10014 choreo && \
+    adduser  --disabled-password  --no-create-home --uid 10014 --ingroup choreo choreouser
+
 # Download dependencies
 RUN cd design/crud-api && \
     go mod download
@@ -52,10 +56,6 @@ RUN cd design/crud-api && \
 # Build the application
 RUN cd design/crud-api && \
     go build -o crud-service cmd/server/service.go cmd/server/utils.go
-
-## Create a new user with UID 10014
-# RUN addgroup -g 10014 choreo && \
-#     adduser  --disabled-password  --no-create-home --uid 10014 --ingroup choreo choreouser
 
 # Final stage
 FROM --platform=linux/amd64 golang:1.24
@@ -127,7 +127,7 @@ echo "MONGO_URI: $MONGO_URI"\n\
 \n\
 # Test MongoDB connection\n\
 echo "Testing MongoDB connection..."\n\
-until mongosh --eval "db.adminCommand(\"ping\")" mongodb://admin:admin123@mongodb:27017/admin; do\n\
+until mongosh --eval "db.adminCommand(\"ping\")" $MONGO_URI; do\n\
   echo "Waiting for MongoDB to be ready..."\n\
   sleep 2\n\
 done\n\
