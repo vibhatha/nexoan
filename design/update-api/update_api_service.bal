@@ -11,11 +11,14 @@ string crudHostname = os:getEnv("CRUD_SERVICE_HOST");
 string updateHostname = os:getEnv("UPDATE_SERVICE_HOST");
 string crudPort = os:getEnv("CRUD_SERVICE_PORT");
 string updatePort = os:getEnv("UPDATE_SERVICE_PORT");
+string crudServiceUrl = os:getEnv("CRUD_SERVICE_URL");
+string updateServiceUrl = os:getEnv("UPDATE_SERVICE_URL");
+
+string finalCrudUrl = crudServiceUrl != "" ? crudServiceUrl : "http://" + crudHostname + ":" + crudPort;
 
 listener http:Listener ep0 = new (check langint:fromString(updatePort), config = {host: updateHostname});
 
-string crudServiceUrl = "http://" + crudHostname + ":" + crudPort;
-CrudServiceClient ep = check new (crudServiceUrl);
+CrudServiceClient ep = check new (finalCrudUrl);
 
 service / on ep0 {
     # Delete an entity
