@@ -51,6 +51,7 @@ service / on ep0 {
     #
     # + return - Entity updated 
     resource function put entities/[string id](@http:Payload json jsonPayload) returns Entity|error {
+        io:println("[put:entities/]Using CRUD service URL: " + finalCrudUrl);
         // Convert JSON to Entity with custom mapping
         Entity payload = check convertJsonToEntity(jsonPayload);
 
