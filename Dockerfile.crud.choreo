@@ -16,23 +16,23 @@
 #   docker run -d \
 #     --name crud-service-choreo \
 #     -p 50051:50051 \
-#     -e NEO4J_URI="neo4j+s://f6451f05.databases.neo4j.io" \
-#     -e NEO4J_USER=neo4j \
-#     -e NEO4J_PASSWORD="5hnuZy7fq8du9Mx6IB8pvdFGPoJSBF3soaXLw-idhVE" \
-#     -e MONGO_URI="mongodb+srv://vibhatha:13b0zAEEd5mNINbA@ldfcluster001.zxegv.mongodb.net/?retryWrites=true&w=majority&appName=LDFCLUSTER001" \
-#     -e MONGO_DB_NAME=testdb \
-#     -e MONGO_COLLECTION=metadata \
-#     -e MONGO_ADMIN_USER=admin \
-#     -e MONGO_ADMIN_PASSWORD=admin123 \
+#     -e NEO4J_URI="neo4j+s://your-neo4j-instance.databases.neo4j.io" \
+#     -e NEO4J_USER="your-neo4j-username" \
+#     -e NEO4J_PASSWORD="your-neo4j-password" \
+#     -e MONGO_URI="mongodb+srv://username:password@your-cluster.mongodb.net/?retryWrites=true&w=majority" \
+#     -e MONGO_DB_NAME="your-mongo-db-name" \
+#     -e MONGO_COLLECTION="your-mongo-collection-name" \
+#     -e MONGO_ADMIN_USER="your-mongo-admin-username" \
+#     -e MONGO_ADMIN_PASSWORD="your-mongo-admin-password"  \
 #     -e CRUD_SERVICE_HOST=0.0.0.0 \
 #     -e CRUD_SERVICE_PORT=50051 \
 #     crud-service-choreo
 #
 # Required Environment Variables (must be provided at runtime):
-# - NEO4J_URI: Connection URI for Neo4j database (e.g., bolt://neo4j:7687)
+# - NEO4J_URI: Connection URI for Neo4j database (e.g., neo4j+s://your-instance.databases.neo4j.io)
 # - NEO4J_USER: Username for Neo4j authentication
 # - NEO4J_PASSWORD: Password for Neo4j authentication
-# - MONGO_URI: Connection URI for MongoDB (e.g., mongodb://admin:admin123@mongodb:27017/admin?authSource=admin)
+# - MONGO_URI: Connection URI for MongoDB (e.g., mongodb+srv://username:password@your-cluster.mongodb.net/?retryWrites=true&w=majority)
 # - MONGO_DB_NAME: MongoDB database name
 # - MONGO_COLLECTION: MongoDB collection name
 # - MONGO_ADMIN_USER: MongoDB admin username
