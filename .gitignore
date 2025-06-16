@@ -22,6 +22,7 @@ target/
 
 # artifacts and env configs not to be committed
 design/crud-api/.env
+design/crud-api/.env.choreo
 .env
 design/crud-api/crud-service
 
@@ -41,4 +42,15 @@ docker/neo4j/logs/*
 
 #vscode
 .vscode
+
+# Certificate files
+choreo/certs/
+choreo/certs/*.crt
+choreo/certs/*.key
+choreo/certs/*.p12
+choreo/certs/*.pem
+choreo/certs/*.cer
+choreo/certs/*.der
+choreo/certs/*.p7b
+choreo/certs/*.p7c
 
