@@ -17,6 +17,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -344,7 +346,7 @@ func main() {
 	// Get SSL certificate paths from environment variable with default
 	certPath := os.Getenv("NEXOAN_SSL_CERT_PATH")
 	if certPath == "" {
-		certPath = "../../choreo/certs/"
+		log.Fatalf("[service.main] NEXOAN_SSL_CERT_PATH environment variable is not set")
 	}
 
 	cert, err := credentials.NewServerTLSFromFile(
@@ -362,6 +364,11 @@ func main() {
 	}
 
 	pb.RegisterCrudServiceServer(grpcServer, server)
+
+	// Register health check service
+	healthServer := health.NewServer()
+	healthServer.SetServingStatus("crud.CrudService", healthpb.HealthCheckResponse_SERVING)
+	healthpb.RegisterHealthServer(grpcServer, healthServer)
 
 	// Register reflection service
 	reflection.Register(grpcServer)

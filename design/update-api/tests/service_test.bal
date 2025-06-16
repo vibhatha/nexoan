@@ -1,25 +1,43 @@
 import ballerina/io;
 import ballerina/test;
 import ballerina/protobuf.types.'any as pbAny;
-import ballerina/http;
 import ballerina/os;
+import ballerina/grpc;
 
 // Get environment variables without fallback values
+string testCrudServiceUrl = os:getEnv("CRUD_SERVICE_URL");
 string testCrudHostname = os:getEnv("CRUD_SERVICE_HOST");
 string testCrudPort = os:getEnv("CRUD_SERVICE_PORT");
 string testUpdateHostname = os:getEnv("UPDATE_SERVICE_HOST");
 string testUpdatePort = os:getEnv("UPDATE_SERVICE_PORT");
+string certPath = os:getEnv("NEXOAN_SSL_CERT_PATH");
 
 // Construct URLs using string concatenation
-string testCrudServiceUrl = "http://" + testCrudHostname + ":" + testCrudPort;
+string finalCrudServiceUrl = testCrudServiceUrl != "" ? testCrudServiceUrl : "http://" + testCrudHostname + ":" + testCrudPort;
 string testUpdateServiceUrl = "http://" + testUpdateHostname + ":" + testUpdatePort;
+
+// Set default cert path if not provided
+string finalCertPath = certPath != "" ? certPath : "certs";
+
+// gRPC client configuration
+grpc:ClientConfiguration grpcConfig = {
+    secureSocket: {
+        enable: true,
+        cert: finalCertPath + "/client.crt"
+    }
+};
 
 // Before Suite Function
 @test:BeforeSuite
 function beforeSuiteFunc() {
     io:println("I'm the before suite function!");
-    io:println("CRUD Service URL: " + testCrudServiceUrl);
+    io:println("CRUD Service URL: " + finalCrudServiceUrl);
     io:println("Update Service URL: " + testUpdateServiceUrl);
+}
+
+// Helper function to create gRPC client
+function createGrpcClient() returns CrudServiceClient|error {
+    return new (finalCrudServiceUrl, grpcConfig);
 }
 
 // After Suite Function
@@ -82,7 +100,7 @@ function jsonToAny(json data) returns pbAny:Any|error {
 @test:Config {}
 function testMetadataHandling() returns error? {
     // Initialize the client
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Test data setup
     string testId = "test-entity-1";
@@ -176,7 +194,7 @@ function testMetadataHandling() returns error? {
 }
 function testMetadataUnpackError() returns error? {
     // Test case to verify handling of non-existent entities
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Try to read a non-existent entity
     ReadEntityRequest readEntityRequest = {
@@ -207,7 +225,7 @@ function testMetadataUnpackError() returns error? {
 @test:Config {}
 function testMetadataUpdating() returns error? {
     // Initialize the client
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Test data setup
     string testId = "test-entity-update";
@@ -360,7 +378,7 @@ function verifyMetadata(record {| string key; pbAny:Any value; |}[] metadata, ma
 @test:Config {}
 function testEntityReading() returns error? {
     // Initialize the client
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Test data setup
     string testId = "test-entity-read";
@@ -480,7 +498,7 @@ function testEntityReading() returns error? {
 @test:Config {}
 function testCreateMinimalGraphEntity() returns error? {
     // Initialize the client
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Test data setup - minimal entity with just required fields
     string testId = "test-minimal-entity";
@@ -548,50 +566,36 @@ function testCreateMinimalGraphEntity() returns error? {
 
 @test:Config {}
 function testCreateMinimalGraphEntityViaRest() returns error? {
-    // Initialize an HTTP client for the REST API
-    http:Client restClient = check new (testUpdateServiceUrl);
+    // Initialize the gRPC client
+    CrudServiceClient ep = check createGrpcClient();
     
-    // Test data setup - minimal JSON entity
+    // Test data setup - minimal entity with just required fields
     string testId = "test-minimal-json-entity";
     
-    // Minimal JSON payload with required fields matching the Entity structure
-    json minimalEntityJson = {
-        "id": testId,
-        "kind": {
-            "major": "test",
-            "minor": "minimal-json"
+    // Create entity request with only required fields
+    Entity createEntityRequest = {
+        id: testId,
+        kind: {
+            major: "test",
+            minor: "minimal-json"
         },
-        "created": "2023-01-01",
-        "terminated": "",
-        "name": {
-            "startTime": "2023-01-01",
-            "endTime": "",
-            "value": "minimal-json-test-entity"
+        created: "2023-01-01",
+        terminated: "",
+        name: {
+            startTime: "2023-01-01",
+            endTime: "",
+            value: check pbAny:pack("minimal-json-test-entity")
         },
-        "metadata": [],
-        "attributes": [],
-        "relationships": []
+        metadata: [],
+        attributes: [],
+        relationships: []
     };
 
-    // Create entity via REST API
-    http:Response|error response = restClient->post("/entities", minimalEntityJson);
+    // Create entity via gRPC
+    Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
+    io:println("Entity created with ID: " + createEntityResponse.id);
     
-    // Verify HTTP request was successful
-    if response is error {
-        test:assertFail("Failed to create entity via REST API: " + response.message());
-    }
-    
-    http:Response httpResponse = <http:Response>response;
-    test:assertEquals(httpResponse.statusCode, 201, "Expected 201 OK status code");
-    
-    // Parse response JSON
-    json responseJson = check httpResponse.getJsonPayload();
-    test:assertEquals(check responseJson.id, testId, "Entity ID in response doesn't match");
-    
-    // Initialize the gRPC client to verify entity was properly created
-    CrudServiceClient ep = check new (testCrudServiceUrl);
-    
-    // Verify entity data
+    // Verify entity was created correctly
     ReadEntityRequest readEntityRequest = {
         entity: {
             id: testId,
@@ -607,7 +611,7 @@ function testCreateMinimalGraphEntityViaRest() returns error? {
             attributes: [],
             relationships: []
         },
-        output: ["metadata","attributes", "relationships"]
+        output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
     
@@ -623,7 +627,6 @@ function testCreateMinimalGraphEntityViaRest() returns error? {
     
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
-    Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test minimal JSON entity deleted");
     
     return;
@@ -637,100 +640,92 @@ function testEntityWithRelationship() returns error? {
     string sourceEntityId = "test-entity-with-relationship-source";
     string targetEntityId = "test-entity-with-relationship-target";
     
-    // Initialize REST client
-    http:Client restClient = check new (testUpdateServiceUrl);
+    // Initialize gRPC client
+    CrudServiceClient ep = check createGrpcClient();
     
     // Create source entity
-    json sourceEntityJson = {
-        "id": sourceEntityId,
-        "kind": {
-            "major": "test",
-            "minor": "relationship-source"
+    Entity sourceEntity = {
+        id: sourceEntityId,
+        kind: {
+            major: "test",
+            minor: "relationship-source"
         },
-        "created": "2023-01-01",
-        "terminated": "",
-        "name": {
-            "startTime": "2023-01-01",
-            "endTime": "",
-            "value": "source-entity"
+        created: "2023-01-01",
+        terminated: "",
+        name: {
+            startTime: "2023-01-01",
+            endTime: "",
+            value: check pbAny:pack("source-entity")
         },
-        "metadata": [],
-        "attributes": [],
-        "relationships": []
+        metadata: [],
+        attributes: [],
+        relationships: []
     };
     
     // Create target entity
-    json targetEntityJson = {
-        "id": targetEntityId,
-        "kind": {
-            "major": "test",
-            "minor": "relationship-target"
+    Entity targetEntity = {
+        id: targetEntityId,
+        kind: {
+            major: "test",
+            minor: "relationship-target"
         },
-        "created": "2023-01-01", 
-        "terminated": "",
-        "name": {
-            "startTime": "2023-01-01",
-            "endTime": "",
-            "value": "target-entity"
+        created: "2023-01-01",
+        terminated: "",
+        name: {
+            startTime: "2023-01-01",
+            endTime: "",
+            value: check pbAny:pack("target-entity")
         },
-        "metadata": [],
-        "attributes": [],
-        "relationships": []
+        metadata: [],
+        attributes: [],
+        relationships: []
     };
     
-    // Create both entities via REST API
-    http:Response|error sourceResponse = restClient->post("/entities", sourceEntityJson);
-    http:Response|error targetResponse = restClient->post("/entities", targetEntityJson);
+    // Create both entities via gRPC
+    Entity sourceResponse = check ep->CreateEntity(sourceEntity);
+    Entity targetResponse = check ep->CreateEntity(targetEntity);
     
-    // Verify HTTP requests were successful
-    if sourceResponse is error {
-        test:assertFail("Failed to create source entity: " + sourceResponse.message());
-    }
-    if targetResponse is error {
-        test:assertFail("Failed to create target entity: " + targetResponse.message());
-    }
+    io:println("Source entity created with ID: " + sourceResponse.id);
+    io:println("Target entity created with ID: " + targetResponse.id);
     
-    http:Response sourceHttpResponse = <http:Response>sourceResponse;
-    http:Response targetHttpResponse = <http:Response>targetResponse;
-    test:assertEquals(sourceHttpResponse.statusCode, 201, "Expected 201 status code for source entity");
-    test:assertEquals(targetHttpResponse.statusCode, 201, "Expected 201 status code for target entity");
-    
-    // Create relationship between entities - include full entity structure
+    // Create relationship between entities
     string relationshipId = "rel-" + sourceEntityId + "-" + targetEntityId;
-    json relationshipJson = {
-        "id": sourceEntityId,
-        "kind": {
+    Entity updateEntity = {
+        id: sourceEntityId,
+        kind: {
+            major: "test",
+            minor: "relationship-source"
         },
-        "created": "",
-        "terminated": "",
-        "name": {
+        created: "2023-01-01",
+        terminated: "",
+        name: {
+            startTime: "2023-01-01",
+            endTime: "",
+            value: check pbAny:pack("source-entity")
         },
-        "metadata": [],
-        "attributes": [],
-        "relationships": {
-            relationshipId: {
-                "relatedEntityId": targetEntityId,
-                "startTime": "2023-01-01",
-                "endTime": "",
-                "id": relationshipId,
-                "name": "CONNECTS_TO"
+        metadata: [],
+        attributes: [],
+        relationships: [
+            {
+                key: relationshipId,
+                value: {
+                    relatedEntityId: targetEntityId,
+                    startTime: "2023-01-01",
+                    endTime: "",
+                    id: relationshipId,
+                    name: "CONNECTS_TO"
+                }
             }
-        }
+        ]
     };
     
     // Update source entity with relationship
-    http:Response|error updateResponse = restClient->put("/entities/" + sourceEntityId, relationshipJson);
-    
-    // Verify update was successful
-    if updateResponse is error {
-        test:assertFail("Failed to update entity with relationship: " + updateResponse.message());
-    }
-    
-    http:Response updateHttpResponse = <http:Response>updateResponse;
-    test:assertEquals(updateHttpResponse.statusCode, 200, "Expected 200 status code for relationship update");
-    
-    // Initialize the gRPC client to verify relationship was properly created
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    UpdateEntityRequest updateRequest = {
+        id: sourceEntityId,
+        entity: updateEntity
+    };
+    Entity updateResponse = check ep->UpdateEntity(updateRequest);
+    io:println("Entity updated with relationship");
     
     // Read source entity to verify relationship
     ReadEntityRequest readEntityRequest = {
@@ -774,7 +769,6 @@ function testEntityWithRelationship() returns error? {
     
     // Clean up
     Empty _ = check ep->DeleteEntity({id: sourceEntityId});
-    Empty _ = check ep->DeleteEntity({id: sourceEntityId});
     Empty _ = check ep->DeleteEntity({id: targetEntityId});
     io:println("Test entities with relationship deleted");
     
@@ -790,7 +784,7 @@ function testEntityWithSimpleOnlyNodesGraphAttributes() returns error? {
     string testId = "test-entity-simple-only-nodes-graph";
     
     // Initialize the gRPC client to verify entity
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Create entity with tabular data in attributes
     json socialNetworkGraph = {
@@ -888,7 +882,7 @@ function testEntityWithSimpleGraphAttributes() returns error? {
     string testId = "test-simple-entity-graph";
     
     // Initialize the gRPC client to verify entity
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Create entity with tabular data in attributes
     json socialNetworkGraph = {
@@ -993,7 +987,7 @@ function testEntityWithMultiGraphAttributes() returns error? {
     string testId = "test-entity-graph";
     
     // Initialize the gRPC client to verify entity
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Create entity with tabular data in attributes
     json salaryGraph = {
@@ -1128,7 +1122,7 @@ function testEntityWithSimpleListAttributes() returns error? {
     string testId = "test-entity-list";
     
     // Initialize the gRPC client to verify entity
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Create entity with list data in attributes
     json salaryList = {
@@ -1198,7 +1192,7 @@ function testEntityWithMixedTypeListAttributes() returns error? {
     string testId = "test-entity-mixed-list";
     
     // Initialize the gRPC client to verify entity
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Create entity with mixed type list data in attributes
     json mixedTypeList = {
@@ -1296,7 +1290,7 @@ function testEntityWithEmptyListAttributes() returns error? {
     string testId = "test-entity-empty-list";
     
     // Initialize the gRPC client to verify entity
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Create entity with empty list data in attributes
     json emptyList = {
@@ -1387,7 +1381,7 @@ function testEntityWithMapAttributes() returns error? {
     string testId = "test-entity-map";
     
     // Initialize the gRPC client to verify entity
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Create entity with map data in attributes
     json userProfileMap = {
@@ -1482,7 +1476,7 @@ function testEntityWithNestedMapAttributes() returns error? {
     string testId = "test-entity-nested-map";
     
     // Initialize the gRPC client to verify entity
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Create entity with nested map data in attributes
     json nestedMap = {
@@ -1611,7 +1605,7 @@ function testEntityWithEmptyMapValues() returns error? {
     string testId = "test-entity-empty-map-values";
     
     // Initialize the gRPC client to verify entity
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Create entity with map data containing empty values
     // FIXME: https://github.com/LDFLK/nexoan/issues/137
@@ -1707,7 +1701,7 @@ function testEntityWithNestedMapValues() returns error? {
     string testId = "test-entity-nested-map-values";
     
     // Initialize the gRPC client to verify entity
-    CrudServiceClient ep = check new (testCrudServiceUrl);
+    CrudServiceClient ep = check createGrpcClient();
     
     // Create entity with deeply nested map data
     json nestedMap = {

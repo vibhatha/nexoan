@@ -70,20 +70,28 @@ RUN cd design/crud-api && \
 # Final stage
 FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.24
 
-# Install runtime dependencies
-RUN apt-get update && \
-    apt-get install -y ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-
 # Copy the built binary from builder stage
 COPY --from=builder /app/design/crud-api/crud-service /usr/local/bin/
 COPY --from=builder /app/design/crud-api /app/design/crud-api
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
-# Add log configuration
-ENV LOG_LEVEL=debug
-ENV LOG_FORMAT=text
+# Copy cert generation script and config
+COPY ../../choreo/certs/generate-certs.sh /app/certs/
+COPY ../../choreo/certs/openssl.cnf /app/certs/
+
+# Install runtime dependencies and OpenSSL
+RUN apt-get update && \
+    apt-get install -y ca-certificates openssl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Generate certificates
+RUN mkdir -p /app/certs && \
+    chmod +x /app/certs/generate-certs.sh && \
+    cd /app/certs && ./generate-certs.sh
+
+# Set environment variable for cert path
+ENV NEXOAN_SSL_CERT_PATH=/app/certs
 
 # Create necessary directories and set permissions
 RUN mkdir -p /home/choreouser/.cache/go-build && \

@@ -94,6 +94,31 @@ COPY --from=builder /app/design/crud-api /app/design/crud-api
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
+# Copy cert generation script and config
+COPY choreo/certs/generate-certs.sh /app/certs/
+COPY choreo/certs/openssl.cnf /app/certs/
+
+# Install runtime dependencies and OpenSSL
+RUN groupadd -r messagebus && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ca-certificates \
+        openssl \
+        wget && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean && \
+    # Install grpc_health_probe
+    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.11/grpc_health_probe-linux-amd64 && \
+    chmod +x /bin/grpc_health_probe
+
+# Generate certificates
+RUN mkdir -p /app/certs && \
+    chmod +x /app/certs/generate-certs.sh && \
+    cd /app/certs && ./generate-certs.sh
+
+# Set environment variable for cert path
+ENV NEXOAN_SSL_CERT_PATH=/app/certs
+
 # Set environment variables with defaults for Neo4j connection
 ENV NEO4J_URI=${NEO4J_URI:-bolt://neo4j:7687}
 ENV NEO4J_USER=${NEO4J_USER:-neo4j}

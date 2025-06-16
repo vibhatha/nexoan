@@ -65,6 +65,7 @@ services:
       - MONGO_ADMIN_PASSWORD=admin123
       - CRUD_SERVICE_HOST=0.0.0.0
       - CRUD_SERVICE_PORT=50051
+      - NEXOAN_SSL_CERT_PATH=/app/certs
     depends_on:
       mongodb:
         condition: service_healthy
@@ -73,7 +74,7 @@ services:
     networks:
       - ldf-network
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:50051 || exit 1"]
+      test: ["CMD-SHELL", "grpc_health_probe -addr=localhost:50051 -tls=false"]
       interval: 30s
       timeout: 10s
       retries: 3

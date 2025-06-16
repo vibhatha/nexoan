@@ -36,6 +36,7 @@ service / on ep0 {
     #
     # + return - Entity created 
     resource function post entities(@http:Payload json jsonPayload) returns Entity|error {
+        io:println("[post:entities/]Using CRUD service URL: " + finalCrudUrl);
         // Convert JSON to Entity with custom mapping
         Entity payload = check convertJsonToEntity(jsonPayload);
         
