@@ -122,6 +122,36 @@ curl -X POST http://localhost:$UPDATE_SERVICE_PORT/entities \
    - Database connection issues: Verify MongoDB and Neo4j credentials
    - Permission issues: Ensure proper file permissions in containers
 
+
+## Choreo Deployment 
+
+When we want to work on a feature which is branched out from the main as a
+feature-x, but we keep working on that feature by locally checking out and
+making consistent pull requests to that branch. We should adopt a custom for that
+which doesn't confuses the branches. 
+
+For instance for our Choreo development make sure to do a code freeze from the `main` 
+branch and then make a `choreo-rc-<version>` at `upstream/nexoan` or we refer as `ldf/nexoan` repo. 
+
+From that branch checkout a local branch
+
+```bash
+git checkout -b ldf-choreo-rc-<version> ldf/choreo-rc-<version>
+```
+
+Then create your branch to work on things. You can always use this `ldf-choreo-rc-<version>`
+branch to keep things in sync with the `ldf/choreo-rc-<version>` and branch out from 
+it to work on the next feature. This is useful when you're working on making significant changes
+to the build configurations at deployment. 
+
+Now checkout your branch as follows. 
+
+```bash
+git checkout -b vibhatha-choreo-rc-0.1.0
+```
+
+> ⚠️ **Warning:** When you create a pull request, make sure to target the `choreo-rc-<version>` branch instead of the `main` branch.
+
 ## Deployment
 
 ## CRUD Service
