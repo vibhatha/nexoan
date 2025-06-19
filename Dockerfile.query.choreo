@@ -121,9 +121,10 @@ RUN apk add --no-cache shadow && \
 # Install runtime dependencies
 RUN apk add --no-cache ca-certificates netcat-openbsd dos2unix
 
-# Create and set permissions for build directories
+# Create and set permissions for build directories with proper write permissions
 RUN mkdir -p /app/design/query-api/target && \
     chown -R choreouser:choreo /app && \
+    chmod -R 777 /app/design/query-api/target && \
     chmod -R 755 /app
 
 # Switch to non-root user for building
@@ -177,23 +178,16 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     chmod +x /app/start.sh && \
     dos2unix /app/start.sh
 
-# Set permissions
-RUN chown -R choreouser:choreo /app && \
-    chmod -R 777 /app
-
-# Ensure the entire query-api project directory has write permissions
-RUN chown -R choreouser:choreo /app/design/query-api && \
-    chmod -R 777 /app/design/query-api
-
-# Ensure target directory has proper write permissions
+# Set permissions - ensure target directory has write permissions
 RUN mkdir -p /app/design/query-api/target && \
-    chown -R choreouser:choreo /app/design/query-api/target && \
-    chmod -R 777 /app/design/query-api/target
+    chown -R choreouser:choreo /app && \
+    chmod -R 777 /app/design/query-api/target && \
+    chmod -R 755 /app
 
 # Create necessary directories and set permissions before switching user
 RUN mkdir -p /home/choreouser/.ballerina && \
     chown -R choreouser:choreo /home/choreouser && \
-    chmod -R 777 /home/choreouser
+    chmod -R 755 /home/choreouser
 
 # Switch to non-root user for running the service
 USER 10014
