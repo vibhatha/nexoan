@@ -104,6 +104,7 @@ def create_entity_for_query():
         ]
     }
 
+    # FIXME: https://github.com/LDFLK/nexoan/issues/235
     # TODO: note that the attribute humidity is a scalar value and this must be saved 
     #  as a scalar value and it should be handled as a Document type. Single key value pair. 
     #  The current implementation only supports saving tabular data.
@@ -209,6 +210,7 @@ def create_entity_for_query():
         ]
     }
 
+    # FIXME: https://github.com/LDFLK/nexoan/issues/235
     # TODO: note that the attribute temperature is a scalar value and this must be saved 
     #  as a scalar value and it should be handled as a Document type. Single key value pair. 
     #  The current implementation only supports saving tabular data.
