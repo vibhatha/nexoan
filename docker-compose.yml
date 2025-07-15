@@ -161,7 +161,7 @@ services:
     image: python:3.9-slim
     container_name: e2e
     volumes:
-      - ./design/tests/e2e:/app/tests
+      - ./nexoan/tests/e2e:/app/tests
     working_dir: /app/tests
     networks:
       - ldf-network

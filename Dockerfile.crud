@@ -47,11 +47,11 @@ WORKDIR /app
 COPY . .
 
 # Download dependencies
-RUN cd design/crud-api && \
+RUN cd nexoan/crud-api && \
     go mod download
 
 # Build the application
-RUN cd design/crud-api && \
+RUN cd nexoan/crud-api && \
     go build -o crud-service cmd/server/service.go cmd/server/utils.go
 
 ## Create a new user with UID 10014
@@ -90,8 +90,8 @@ ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH=$JAVA_HOME/bin:$PATH
 
 # Copy the built binary from builder stage
-COPY --from=builder /app/design/crud-api/crud-service /usr/local/bin/
-COPY --from=builder /app/design/crud-api /app/design/crud-api
+COPY --from=builder /app/nexoan/crud-api/crud-service /usr/local/bin/
+COPY --from=builder /app/nexoan/crud-api /app/nexoan/crud-api
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
@@ -163,7 +163,7 @@ echo "PostgreSQL connection successful!"\n\
 \n\
 # Run Go tests\n\
 echo "=== Running Go Tests ==="\n\
-cd /app/design/crud-api\n\
+cd /app/nexoan/crud-api\n\
 if ! go test -v ./...; then\n\
   echo "❌ Tests failed!"\n\
   exit 1\n\
