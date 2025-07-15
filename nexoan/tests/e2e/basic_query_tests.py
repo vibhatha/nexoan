@@ -104,6 +104,10 @@ def create_entity_for_query():
         ]
     }
 
+    # TODO: note that the attribute humidity is a scalar value and this must be saved 
+    #  as a scalar value and it should be handled as a Document type. Single key value pair. 
+    #  The current implementation only supports saving tabular data.
+
     # Second related entity
     payload_child_2 = {
         "id": RELATED_ID_2,
@@ -204,6 +208,10 @@ def create_entity_for_query():
             }
         ]
     }
+
+    # TODO: note that the attribute temperature is a scalar value and this must be saved 
+    #  as a scalar value and it should be handled as a Document type. Single key value pair. 
+    #  The current implementation only supports saving tabular data.
 
     res = requests.post(UPDATE_API_URL, json=payload_child_1)
     assert res.status_code == 201 or res.status_code == 200, f"Failed to create entity: {res.text}"
