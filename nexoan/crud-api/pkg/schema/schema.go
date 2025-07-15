@@ -20,6 +20,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"lk/datafoundation/crud-api/pkg/storageinference"
 	"lk/datafoundation/crud-api/pkg/typeinference"
@@ -286,8 +287,45 @@ func (sg *SchemaGenerator) GenerateSchema(anyValue *anypb.Any) (*SchemaInfo, err
 				return nil, fmt.Errorf("unsupported scalar type")
 			}
 			return schema, nil
+		case *wrapperspb.StringValue:
+			// Handle StringValue wrapper
+			return &SchemaInfo{
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.StringType},
+			}, nil
+		case *wrapperspb.Int32Value:
+			// Handle Int32Value wrapper
+			return &SchemaInfo{
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.IntType},
+			}, nil
+		case *wrapperspb.Int64Value:
+			// Handle Int64Value wrapper
+			return &SchemaInfo{
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.IntType},
+			}, nil
+		case *wrapperspb.FloatValue:
+			// Handle FloatValue wrapper
+			return &SchemaInfo{
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.FloatType},
+			}, nil
+		case *wrapperspb.DoubleValue:
+			// Handle DoubleValue wrapper
+			return &SchemaInfo{
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.FloatType},
+			}, nil
+		case *wrapperspb.BoolValue:
+			// Handle BoolValue wrapper
+			return &SchemaInfo{
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.BoolType},
+			}, nil
 		default:
-			return nil, fmt.Errorf("expected struct value")
+			fmt.Printf("Schema generator hit default case with message type: %T, message: %+v\n", message, message)
+			return nil, fmt.Errorf("expected struct value or supported wrapper type, got %T", message)
 		}
 	}
 

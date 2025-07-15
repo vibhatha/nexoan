@@ -10,6 +10,7 @@ import (
 
 	pb "lk/datafoundation/crud-api/lk/datafoundation/crud-api"
 	"lk/datafoundation/crud-api/pkg/schema"
+	"lk/datafoundation/crud-api/pkg/storageinference"
 	"lk/datafoundation/crud-api/pkg/typeinference"
 
 	"google.golang.org/protobuf/types/known/anypb"
@@ -171,7 +172,7 @@ func validateAndReturnTabularDataTypes(data *structpb.Struct) (map[string]typein
 	rowsList := data.Fields["rows"].GetListValue()
 
 	columnTypes := make(map[string]typeinference.TypeInfo)
-	
+
 	// If there are no rows, return empty map
 	if len(rowsList.Values) == 0 {
 		return columnTypes, nil
@@ -270,7 +271,7 @@ func isDateTime(val string) bool {
 	if err == nil {
 		return true
 	}
-	
+
 	// IMPROVEME: https://github.com/LDFLK/nexoan/issues/159
 	// Try other common formats
 	formats := []string{
@@ -279,13 +280,13 @@ func isDateTime(val string) bool {
 		"2006/01/02",
 		"02/01/2006",
 	}
-	
+
 	for _, format := range formats {
 		if _, err := time.Parse(format, val); err == nil {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -316,9 +317,13 @@ func HandleAttributes(ctx context.Context, repo *PostgresRepository, entityID st
 			// Log schema information for debugging
 			logSchemaInfo(schemaInfo)
 
-			// Handle tabular data
-			if err := handleTabularData(ctx, repo, entityID, attrName, value, schemaInfo); err != nil {
-				return fmt.Errorf("error handling tabular data for attribute %s: %v", attrName, err)
+			if schemaInfo.StorageType == storageinference.TabularData {
+				// Handle tabular data
+				if err := handleTabularData(ctx, repo, entityID, attrName, value, schemaInfo); err != nil {
+					return fmt.Errorf("error handling tabular data for attribute %s: %v", attrName, err)
+				}
+			} else {
+				fmt.Printf("Attribute is not a tabular value skipping processing storage type :%s", schemaInfo.StorageType)
 			}
 		}
 	}
@@ -379,7 +384,7 @@ func validateDataAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaI
 // compareSchemas compares two schemas and returns true if they are compatible
 func compareSchemas(existing, newSchema *schema.SchemaInfo) (bool, error) {
 	if existing.StorageType != newSchema.StorageType {
-		return false, fmt.Errorf("storage type mismatch: existing=%s, newSchema=%s", 
+		return false, fmt.Errorf("storage type mismatch: existing=%s, newSchema=%s",
 			existing.StorageType, newSchema.StorageType)
 	}
 
