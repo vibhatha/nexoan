@@ -4,13 +4,13 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'design/update-api/**'
+      - 'nexoan/update-api/**'
       - 'Dockerfile.update'
       - 'docker-compose.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'design/update-api/**'
+      - 'nexoan/update-api/**'
       - 'Dockerfile.update'
       - 'docker-compose.yml'
 

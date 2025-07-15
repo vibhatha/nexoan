@@ -14,16 +14,16 @@ Config.toml
 #macOS filters
 
 .DS_Store
-design/.DS_Store
+nexoan/.DS_Store
 .vscode/
 # Ballerina
 
 target/
 
 artifacts and env configs not to be committed
-design/crud-api/.env
+nexoan/crud-api/.env
 .env
-design/crud-api/crud-service
+nexoan/crud-api/crud-service
 
 # Neo4j
 docker/neo4j/config.env
@@ -32,10 +32,12 @@ docker/neo4j/neo4j/logs/*
 docker/neo4j/neo4j/import/*
 docker/neo4j/neo4j/plugins/*
 
+# build targets
+
 
 # executables
-design/crud-api/crud-service
-design/crud-api/crud-service.exe
+nexoan/crud-api/crud-service
+nexoan/crud-api/crud-service.exe
 docker/neo4j/data/*
 docker/neo4j/logs/*
 

@@ -4,13 +4,13 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'design/query-api/**'
+      - 'nexoan/query-api/**'
       - 'Dockerfile.query'
       - 'docker-compose.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'design/query-api/**'
+      - 'nexoan/query-api/**'
       - 'Dockerfile.query'
       - 'docker-compose.yml'
 

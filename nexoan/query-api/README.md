@@ -37,7 +37,7 @@ All the commands here are for the **LINUX** & **macOS**, but they work on the **
 
 For LINUX & macOS
 ```bash
-cd design/query-api
+cd nexoan/query-api
 cp env.template .env
 # update the required fields to set the environment variables
 # (you can find the example env configurations here)
@@ -49,7 +49,7 @@ bal run
 
 For windows (make sure you open the **Powershell CLI**)
 ```bash
-cd design/query-api
+cd nexoan/query-api
 echo .env
 # after updating the required fields to be added to the environment
 # you have to copy and paste the env configurations on the Powershell CLI

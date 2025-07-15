@@ -39,7 +39,7 @@ go test -v ./...
 Initialize a Go module. (For LINUX, macOS & Windows)
 
 ```bash
-go mod init github.com/LDFLK/nexoan/design/crud-api
+go mod init github.com/LDFLK/nexoan/nexoan/crud-api
 ```
 
 Generating the protobuf stubs for Go-lang

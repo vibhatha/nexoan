@@ -4,13 +4,13 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'design/crud-api/**'
+      - 'nexoan/crud-api/**'
       - 'Dockerfile.crud'
       - 'docker-compose.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'design/crud-api/**'
+      - 'nexoan/crud-api/**'
       - 'Dockerfile.crud'
       - 'docker-compose.yml'
 
