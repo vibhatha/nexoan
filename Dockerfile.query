@@ -22,7 +22,7 @@ RUN echo "=========================================" \
     && echo "========================================="
 
 # Set proper permissions for the entire project
-RUN mkdir -p /app/design/query-api/target \
+RUN mkdir -p /app/nexoan/query-api/target \
     && chmod -R 755 /app
 
 # Set environment variables
@@ -32,7 +32,7 @@ ENV QUERY_SERVICE_HOST=${QUERY_SERVICE_HOST:-0.0.0.0}
 ENV QUERY_SERVICE_PORT=${QUERY_SERVICE_PORT:-8081}
 
 # Build the Ballerina service
-RUN cd design/query-api && \
+RUN cd nexoan/query-api && \
     bal build
 
 EXPOSE 8081
@@ -47,10 +47,10 @@ done\n\
 echo "CRUD service is ready!"\n\
 \n\
 echo "Run ballerina test..."\n\
-bal test design/query-api\n\
+bal test nexoan/query-api\n\
 \n\
 echo "Starting Query service..."\n\
-exec bal run design/query-api\n' > /app/start.sh && \
+exec bal run nexoan/query-api\n' > /app/start.sh && \
     chmod +x /app/start.sh && \
     dos2unix /app/start.sh
 

@@ -10,14 +10,14 @@ FROM golang:1.24 AS builder
 WORKDIR /app
 COPY . .
 
-RUN cd design/crud-api && go mod download
-RUN cd design/crud-api && go build ./...
-RUN cd design/crud-api && go build -o crud-service cmd/server/service.go cmd/server/utils.go
+RUN cd nexoan/crud-api && go mod download
+RUN cd nexoan/crud-api && go build ./...
+RUN cd nexoan/crud-api && go build -o crud-service cmd/server/service.go cmd/server/utils.go
 
 RUN mkdir -p /app/testbin
-RUN cd design/crud-api/cmd/server && go test -c -o /app/testbin/crud-test .
-RUN cd design/crud-api/db/repository/mongo && go test -c -o /app/testbin/mongo-test .
-RUN cd design/crud-api/db/repository/neo4j && go test -c -o /app/testbin/neo4j-test .
+RUN cd nexoan/crud-api/cmd/server && go test -c -o /app/testbin/crud-test .
+RUN cd nexoan/crud-api/db/repository/mongo && go test -c -o /app/testbin/mongo-test .
+RUN cd nexoan/crud-api/db/repository/neo4j && go test -c -o /app/testbin/neo4j-test .
 
 # -------------------
 # Stage 2: Final Image
@@ -81,10 +81,10 @@ RUN sed -i 's/#server.default_listen_address=0.0.0.0/server.default_listen_addre
     && echo "dbms.security.procedures.unrestricted=apoc.*" >> /etc/neo4j/neo4j.conf
 
 # Copy compiled binaries and source code
-COPY --from=builder /app/design/crud-api/crud-service /usr/local/bin/
+COPY --from=builder /app/nexoan/crud-api/crud-service /usr/local/bin/
 COPY --from=builder /app/testbin/* /usr/local/bin/
-COPY --from=builder /app/design/crud-api /app/design/crud-api
-COPY --from=builder /app/design/update-api /app/design/update-api
+COPY --from=builder /app/nexoan/crud-api /app/nexoan/crud-api
+COPY --from=builder /app/nexoan/update-api /app/nexoan/update-api
 
 WORKDIR /app
 
@@ -125,7 +125,7 @@ until mongosh --eval "db.version()" > /dev/null 2>&1; do\n\
 done\n\
 \n\
 echo "Running CRUD service tests..."\n\
-cd /app/design/crud-api\n\
+cd /app/nexoan/crud-api\n\
 crud-test -test.v && mongo-test -test.v && neo4j-test -test.v\n\
 \n\
 echo "Starting CRUD server..."\n\
@@ -134,7 +134,7 @@ CRUD_PID=$!\n\
 sleep 5\n\
 \n\
 echo "Running update-api tests..."\n\
-cd /app/design/update-api\n\
+cd /app/nexoan/update-api\n\
 bal test\n\
 \n\
 echo "Stopping CRUD server..."\n\

@@ -47,16 +47,6 @@ docker compose down -v
 ### Restore Server Data (TODO)
 
 
-### Docker (Standalone): WIP
-
-```bash
-docker build -t all-services-test-standalone -f Dockerfile .
-```
-
-```bash
-docker run --rm all-services-test-standalone
-```
-
 ### Docker Compose
 
 Use the `docker compose` to up the services to run tests and to check the current version of the software is working. 
@@ -89,28 +79,34 @@ Build CRUD Service
 
 And to up it `docker compose up crud`
 
-### Using crud api services via ballerina
+### Using CRUD API services via Ballerina
 
-When using any crud services such as ReadEntity, UpdateEntity etc via ballerina (for example in the query api or update api layer) pay special attention to the name field in Entity objects.
+When using any CRUD services such as `ReadEntity`, `UpdateEntity` etc via Ballerina (for example in the query api or update api layer) pay special attention to the name field in Entity objects.
 
 The name field is a TimeBasedValue of the following structure:
+
+```protobuf
 message TimeBasedValue {
     string startTime = 1;
     string endTime = 2;
     google.protobuf.Any value = 3; // Storing any type of value
 }
+```
 
 Note that when creating the Entity, if you don't pass the name field, the "Any" value inside will default to a null value. This will cause Ballerina to throw an error as it can't handle null values in this context. Thus, always ensure that when passing an empty name field you must include the field with an empty string for the value part.
 
 For example, this will throw an error as the name field is not present:
 
+```bal
 Entity relFilterName = {
         id: entityId,
         relationships: [{key: "", value: {name: "linked"}}]
     };
+```
 
 But this will not throw an error as though the name is empty, the field itself is still present:
 
+```bal
 Entity relFilterName = {
         id: entityId,
         name: {
@@ -118,5 +114,6 @@ Entity relFilterName = {
         },
         relationships: [{key: "", value: {name: "linked"}}]
     };
+```
 
 * Note this doesn't apply to other fields. If you don't want to include a field's value, you don't need to pass the field at all. 
