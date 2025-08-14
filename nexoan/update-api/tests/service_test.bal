@@ -5,13 +5,13 @@ import ballerina/http;
 import ballerina/os;
 
 // Get environment variables without fallback values
-string testCrudHostname = os:getEnv("CRUD_SERVICE_HOST");
-string testCrudPort = os:getEnv("CRUD_SERVICE_PORT");
 string testUpdateHostname = os:getEnv("UPDATE_SERVICE_HOST");
 string testUpdatePort = os:getEnv("UPDATE_SERVICE_PORT");
 
+// Try to get complete CRUD service URL from environment variable first
+string? crudServiceUrlEnv = os:getEnv("CRUD_SERVICE_URL");
+string testCrudServiceUrl = crudServiceUrlEnv ?: "http://0.0.0.0:50051";
 // Construct URLs using string concatenation
-string testCrudServiceUrl = "http://" + testCrudHostname + ":" + testCrudPort;
 string testUpdateServiceUrl = "http://" + testUpdateHostname + ":" + testUpdatePort;
 
 // Before Suite Function
@@ -548,8 +548,11 @@ function testCreateMinimalGraphEntity() returns error? {
 
 @test:Config {}
 function testCreateMinimalGraphEntityViaRest() returns error? {
-    // Initialize an HTTP client for the REST API
-    http:Client restClient = check new (testUpdateServiceUrl);
+    // Initialize an HTTP client for the REST API with HTTP/2 support
+    http:ClientConfiguration httpConfig = {
+        httpVersion: "2.0" // Enable HTTP/2
+    };
+    http:Client restClient = check new (testUpdateServiceUrl, httpConfig);
     
     // Test data setup - minimal JSON entity
     string testId = "test-minimal-json-entity";
@@ -637,8 +640,11 @@ function testEntityWithRelationship() returns error? {
     string sourceEntityId = "test-entity-with-relationship-source";
     string targetEntityId = "test-entity-with-relationship-target";
     
-    // Initialize REST client
-    http:Client restClient = check new (testUpdateServiceUrl);
+    // Initialize REST client with HTTP/2 support
+    http:ClientConfiguration httpConfig = {
+        httpVersion: "2.0" // Enable HTTP/2
+    };
+    http:Client restClient = check new (testUpdateServiceUrl, httpConfig);
     
     // Create source entity
     json sourceEntityJson = {
