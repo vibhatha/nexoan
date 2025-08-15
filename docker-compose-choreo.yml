@@ -160,6 +160,30 @@ services:
     networks:
       - choreo-network
 
+  query-choreo:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile.query.choreo
+    container_name: query-choreo
+    ports:
+      - "8081:8081"
+    environment:
+      - CRUD_SERVICE_URL=http://crud-choreo:50051
+      - QUERY_SERVICE_HOST=0.0.0.0
+      - QUERY_SERVICE_PORT=8081
+    depends_on:
+      crud-choreo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8081"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - choreo-network
+
   e2e-choreo:
     platform: linux/amd64
     image: python:3.9-slim
@@ -172,6 +196,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - UPDATE_SERVICE_URL=http://update-choreo:8080
+      - QUERY_SERVICE_URL=http://query-choreo:8081
     depends_on:
       update-choreo:
         condition: service_healthy
@@ -180,7 +205,8 @@ services:
         echo 'Waiting for services to be ready...' &&
         sleep 10 &&
         pip install requests &&
-        python3 basic_crud_tests.py"
+        python3 basic_crud_tests.py &&
+        python3 basic_query_tests.py"
 
 networks:
   choreo-network:

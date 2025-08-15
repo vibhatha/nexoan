@@ -3,20 +3,32 @@
 
 import ballerina/http;
 import ballerina/protobuf.types.'any;
-import ballerina/os;
+import ballerina/grpc;
 import ballerina/lang.'int as langint;
 import ballerina/io;
 import ballerina/protobuf.types.'any as pbAny;
 
-string crudHostname = os:getEnv("CRUD_SERVICE_HOST");
-string queryHostname = os:getEnv("QUERY_SERVICE_HOST");
-string crudPort = os:getEnv("CRUD_SERVICE_PORT");
-string queryPort = os:getEnv("QUERY_SERVICE_PORT");
+// BAL_CONFIG_VAR_CRUDSERVICEURL
+configurable string crudServiceUrl = ?;
+// BAL_CONFIG_VAR_QUERYSERVICEHOST
+configurable string queryServiceHost = "0.0.0.0";
+// BAL_CONFIG_VAR_QUERYSERVICEPORT
+configurable string queryServicePort = "8081";
 
-listener http:Listener ep0 = new (check langint:fromString(queryPort), config = {host: queryHostname});
+listener http:Listener ep0 = new (check langint:fromString(queryServicePort), config = {
+    host: queryServiceHost,
+    httpVersion: http:HTTP_2_0
+});
 
-string crudServiceUrl = "http://" + crudHostname + ":" + crudPort;
-CrudServiceClient ep = check new (crudServiceUrl);
+// Create gRPC client with proper configuration for HTTP/2
+grpc:ClientConfiguration grpcConfig = {
+    timeout: 300000, // 5 minutes timeout
+    secureSocket: {
+        enable: false // Disable TLS for insecure connection
+    }
+};
+
+CrudServiceClient ep = check new (crudServiceUrl, grpcConfig);
 
 // Helper function to extract string representation based on typeUrl
 function extractValueAsString('any:Any anyValue) returns string {

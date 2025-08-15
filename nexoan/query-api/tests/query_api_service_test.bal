@@ -2,7 +2,6 @@ import ballerina/io;
 import ballerina/test;
 import ballerina/protobuf.types.'any as pbAny;
 import ballerina/os;
-import ballerina/lang.'int as langint;
 
 // Before Suite Function
 @test:BeforeSuite
@@ -13,29 +12,21 @@ function beforeSuiteFunc() {
 // Helper function to get CRUD service URL
 function getCrudServiceUrl() returns string|error {
     io:println("Getting CRUD service URL");
-    string crudHostname = os:getEnv("CRUD_SERVICE_HOST");
-    string crudPort = os:getEnv("CRUD_SERVICE_PORT");
+    string crudServiceUrl = os:getEnv("CRUD_SERVICE_URL");
     
-    io:println("CRUD_SERVICE_HOST: " + crudHostname);
-    io:println("CRUD_SERVICE_PORT: " + crudPort);
+    io:println("CRUD_SERVICE_URL: " + crudServiceUrl);
     
-    if crudHostname == "" {
-        return error("CRUD_SERVICE_HOST environment variable is not set");
+    if crudServiceUrl == "" {
+        return error("CRUD_SERVICE_URL environment variable is not set");
     }
     
-    if crudPort == "" {
-        return error("CRUD_SERVICE_PORT environment variable is not set");
+    // Validate URL format
+    if !crudServiceUrl.startsWith("http://") && !crudServiceUrl.startsWith("https://") {
+        return error("CRUD_SERVICE_URL must be a valid HTTP/HTTPS URL, got: " + crudServiceUrl);
     }
     
-    // Validate port is a number
-    int|error portNumber = langint:fromString(crudPort);
-    if portNumber is error {
-        return error("CRUD_SERVICE_PORT must be a valid number, got: " + crudPort);
-    }
-    
-    string url = "http://" + crudHostname + ":" + crudPort;
-    io:println("Connecting to CRUD service at: " + url);
-    return url;
+    io:println("Connecting to CRUD service at: " + crudServiceUrl);
+    return crudServiceUrl;
 }
 
 // Helper function to unpack Any values to strings
