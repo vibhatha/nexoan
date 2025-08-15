@@ -12,8 +12,8 @@
 # Basic run command:
 #   docker run -p 8080:8080 \
 #     -e CRUD_SERVICE_URL="http://host.docker.internal:50051" \
-#     -e UPDATE_SERVICE_HOST="0.0.0.0" \
-#     -e UPDATE_SERVICE_PORT="8080" \
+#     -e QUERY_SERVICE_HOST="0.0.0.0" \
+#     -e QUERY_SERVICE_PORT="8081" \
 #     ldf-choreo-query-service
 #
 # Options:
