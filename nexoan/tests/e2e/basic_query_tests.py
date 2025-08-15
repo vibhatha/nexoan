@@ -4,14 +4,12 @@ import sys
 import os
 
 def get_service_urls():
-    query_host = os.getenv('QUERY_SERVICE_HOST', 'localhost')
-    query_port = os.getenv('QUERY_SERVICE_PORT', '8081')
-    update_host = os.getenv('UPDATE_SERVICE_HOST', 'localhost')
-    update_port = os.getenv('UPDATE_SERVICE_PORT', '8080')
+    query_service_url = os.getenv('QUERY_SERVICE_URL', 'http://0.0.0.0:8081')
+    update_service_url = os.getenv('UPDATE_SERVICE_URL', 'http://0.0.0.0:8080')
     
     return {
-        'query': f"http://{query_host}:{query_port}/v1/entities",
-        'update': f"http://{update_host}:{update_port}/entities"
+        'query': f"{query_service_url}/v1/entities",
+        'update': f"{update_service_url}/entities"
     }
 
 # Get service URLs from environment variables
