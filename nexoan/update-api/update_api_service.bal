@@ -22,6 +22,7 @@ function getCrudServiceUrl() returns string {
     if deploymentEnv == "choreo" {
         // For Choreo, use the environment variable
         string choreoUrl = os:getEnv("CHOREO_UPDATE_TO_CRUD_CON_SERVICEURL");
+        io:println("CHOREO_UPDATE_TO_CRUD_CON_SERVICEURL: " + choreoUrl);
         if choreoUrl != "" {
             return choreoUrl;
         }
