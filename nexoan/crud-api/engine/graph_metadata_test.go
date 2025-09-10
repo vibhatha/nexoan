@@ -19,6 +19,8 @@ func TestGraphMetadataManager(t *testing.T) {
 
 	parentEntityID := "engine-test-entity-1"
 
+	createdTime := time.Now()
+
 	// Test creating attribute metadata
 	metadata := &AttributeMetadata{
 		EntityID:      parentEntityID,
@@ -26,8 +28,8 @@ func TestGraphMetadataManager(t *testing.T) {
 		AttributeName: "test-attribute",
 		StorageType:   storageinference.TabularData,
 		StoragePath:   "tables/attr_test-entity-1_test-attribute",
-		Created:       time.Now(),
-		Updated:       time.Now(),
+		Created:       createdTime,
+		Updated:       createdTime,
 		Schema: map[string]interface{}{
 			"columns": []string{"id", "name"},
 			"types":   []string{"int", "string"},
@@ -46,7 +48,7 @@ func TestGraphMetadataManager(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test getting attribute metadata
-	retrievedMetadata, err := manager.GetAttribute(ctx, metadata.EntityID, metadata.AttributeName)
+	retrievedMetadata, err := manager.GetAttribute(ctx, metadata.EntityID, metadata.AttributeName, createdTime)
 	assert.NoError(t, err)
 	assert.NotNil(t, retrievedMetadata)
 	assert.Equal(t, metadata.EntityID, retrievedMetadata.EntityID)
@@ -129,7 +131,7 @@ func TestGraphMetadataIntegration(t *testing.T) {
 			"rows": [[1, "John"], [2, "Jane"]]
 		}`,
 		"graph_data": `{
-			"nodes": [{"id": "user1", "type": "user"}],
+			"nodes": [{"n_id": "user1", "type": "user"}],
 			"edges": [{"source": "user1", "target": "user2"}]
 		}`,
 		"document_data": `{
@@ -146,20 +148,44 @@ func TestGraphMetadataIntegration(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test create operation - this should create graph metadata
-	err = processor.ProcessEntityAttributes(ctx, entity, "create")
-	assert.NoError(t, err)
+	options := getOptionsForOperation("create")
+	attributeResults := processor.ProcessEntityAttributes(ctx, entity, "create", options)
+
+	// Check that all attributes were processed successfully
+	for attrName, result := range attributeResults {
+		assert.True(t, result.Success, "Attribute %s should be processed successfully in create operation", attrName)
+		assert.NoError(t, result.Error, "Attribute %s should not have errors in create operation", attrName)
+	}
 
 	// Test read operation - this should verify graph metadata
-	err = processor.ProcessEntityAttributes(ctx, entity, "read")
-	assert.NoError(t, err)
+	options = getOptionsForOperation("read")
+	attributeResults = processor.ProcessEntityAttributes(ctx, entity, "read", options)
+
+	// Check that all attributes were processed successfully
+	for attrName, result := range attributeResults {
+		assert.True(t, result.Success, "Attribute %s should be processed successfully in read operation", attrName)
+		assert.NoError(t, result.Error, "Attribute %s should not have errors in read operation", attrName)
+	}
 
 	// Test update operation - this should update graph metadata
-	err = processor.ProcessEntityAttributes(ctx, entity, "update")
-	assert.NoError(t, err)
+	options = getOptionsForOperation("update")
+	attributeResults = processor.ProcessEntityAttributes(ctx, entity, "update", options)
+
+	// Check that all attributes were processed successfully
+	for attrName, result := range attributeResults {
+		assert.True(t, result.Success, "Attribute %s should be processed successfully in update operation", attrName)
+		assert.NoError(t, result.Error, "Attribute %s should not have errors in update operation", attrName)
+	}
 
 	// Test delete operation - this should delete graph metadata
-	err = processor.ProcessEntityAttributes(ctx, entity, "delete")
-	assert.NoError(t, err)
+	options = getOptionsForOperation("delete")
+	attributeResults = processor.ProcessEntityAttributes(ctx, entity, "delete", options)
+
+	// Check that all attributes were processed successfully
+	for attrName, result := range attributeResults {
+		assert.True(t, result.Success, "Attribute %s should be processed successfully in delete operation", attrName)
+		assert.NoError(t, result.Error, "Attribute %s should not have errors in delete operation", attrName)
+	}
 }
 
 // TestAttributeMetadataStructure tests the AttributeMetadata structure

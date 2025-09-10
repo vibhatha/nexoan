@@ -2,18 +2,12 @@ package commons
 
 import (
 	"encoding/json"
+	"fmt"
 	pb "lk/datafoundation/crud-api/lk/datafoundation/crud-api"
 	"lk/datafoundation/crud-api/pkg/storageinference"
 	"log"
+	"strings"
 	"time"
-
-	"context"
-	"fmt"
-	"os"
-
-	"lk/datafoundation/crud-api/db/config"
-	mongorepository "lk/datafoundation/crud-api/db/repository/mongo"
-	neo4jrepository "lk/datafoundation/crud-api/db/repository/neo4j"
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -50,15 +44,15 @@ func ExtractStringFromAny(anyValue *anypb.Any) string {
 // ConvertStorageTypeStringToEnum converts a storage type string to StorageType enum
 func ConvertStorageTypeStringToEnum(storageTypeStr string) storageinference.StorageType {
 	switch storageTypeStr {
-	case "TabularData":
+	case "tabular":
 		return storageinference.TabularData
-	case "GraphData":
+	case "graph":
 		return storageinference.GraphData
-	case "MapData":
+	case "map":
 		return storageinference.MapData
-	case "ListData":
+	case "list":
 		return storageinference.ListData
-	case "ScalarData":
+	case "scalar":
 		return storageinference.ScalarData
 	default:
 		return storageinference.UnknownData
@@ -79,6 +73,8 @@ func ExtractAttributeMetadataFields(entity *pb.Entity) (storageTypeStr, storageP
 	storagePath = ExtractStringFromAny(metadataMap["storage_path"])
 	updatedStr = ExtractStringFromAny(metadataMap["updated"])
 	schemaStr := ExtractStringFromAny(metadataMap["schema"])
+
+	log.Printf("[Commons.ExtractAttributeMetadataFields] storageTypeStr: %s, storagePath: %s, updatedStr: %s, schemaStr: %s", storageTypeStr, storagePath, updatedStr, schemaStr)
 
 	// Convert schema JSON string to map
 	schemaMap, err := ConvertJSONStringToMap(schemaStr)
@@ -160,37 +156,21 @@ func ParseTimestamp(timestampStr string, context string) time.Time {
 	return parsed
 }
 
-// GetNeo4jConfig creates a Neo4jConfig from environment variables
-func GetNeo4jConfig() *config.Neo4jConfig {
-	return &config.Neo4jConfig{
-		URI:      os.Getenv("NEO4J_URI"),
-		Username: os.Getenv("NEO4J_USER"),
-		Password: os.Getenv("NEO4J_PASSWORD"),
-	}
-}
+// SanitizeIdentifier makes a string safe for use as a PostgreSQL identifier
+// IMPROVEME: https://github.com/LDFLK/nexoan/issues/160
+func SanitizeIdentifier(s string) string {
+	// Replace invalid characters with underscores
+	safe := strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
+			return r
+		}
+		return '_'
+	}, strings.ToLower(s))
 
-// GetMongoConfig creates a MongoConfig from environment variables
-func GetMongoConfig() *config.MongoConfig {
-	return &config.MongoConfig{
-		URI:        os.Getenv("MONGO_URI"),
-		DBName:     os.Getenv("MONGO_DB_NAME"),
-		Collection: os.Getenv("MONGO_COLLECTION"),
+	// Ensure it doesn't start with a number
+	if len(safe) > 0 && safe[0] >= '0' && safe[0] <= '9' {
+		safe = "_" + safe
 	}
-}
 
-// GetNeo4jRepository retrieves a Neo4j repository
-func GetNeo4jRepository(ctx context.Context) (*neo4jrepository.Neo4jRepository, error) {
-	cfg := GetNeo4jConfig()
-	repo, err := neo4jrepository.NewNeo4jRepository(ctx, cfg)
-	if err != nil {
-		return nil, fmt.Errorf("[Commons] failed to create Neo4j repository: %w", err)
-	}
-	return repo, nil
-}
-
-// GetMongoRepository retrieves a Mongo repository
-// TODO: Handle errors better
-func GetMongoRepository(ctx context.Context) *mongorepository.MongoRepository {
-	cfg := GetMongoConfig()
-	return mongorepository.NewMongoRepository(ctx, cfg)
+	return safe
 }

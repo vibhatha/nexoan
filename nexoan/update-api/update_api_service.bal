@@ -31,6 +31,84 @@ grpc:ClientConfiguration grpcConfig = {
 
 CrudServiceClient ep = check new (crudServiceUrl, grpcConfig);
 
+// Helper function to convert decimal values to float for protobuf compatibility
+// Note that this is a temporary solution to convert decimal values to float for protobuf compatibility.
+// It is not a permanent solution and should be removed when the protobuf library is updated to support decimal values.
+// FIXME: https://github.com/LDFLK/nexoan/issues/287
+function convertDecimalToFloat(json data) returns json {
+    if data is decimal {
+        // Convert decimal to float for protobuf compatibility
+        return <float>data;
+    } else if data is json[] {
+        // Handle arrays - recursively convert each element
+        json[] convertedArray = [];
+        foreach var item in data {
+            convertedArray.push(convertDecimalToFloat(item));
+        }
+        return convertedArray;
+    } else if data is map<json> {
+        // Handle maps - recursively convert each value
+        map<json> convertedMap = {};
+        foreach var [key, value] in data.entries() {
+            convertedMap[key] = convertDecimalToFloat(value);
+        }
+        return convertedMap;
+    } else {
+        // For other types (int, string, boolean, etc.), return as-is
+        return data;
+    }
+}
+
+// Helper function to convert JSON to protobuf Any value
+function convertJsonToAny(json data) returns pbAny:Any|error {
+    // First, convert any decimal values to float for protobuf compatibility
+    // FIXME: https://github.com/LDFLK/nexoan/issues/287
+    json convertedData = convertDecimalToFloat(data);
+    
+    if convertedData is int {
+        // For integer values
+        map<json> structMap = {
+            "value": convertedData
+        };
+        return pbAny:pack(structMap);
+    } else if convertedData is float {
+        // For float values
+        map<json> structMap = {
+            "value": convertedData
+        };
+        return pbAny:pack(structMap);
+    } else if convertedData is string {
+        // For string values
+        map<json> structMap = {
+            "value": convertedData
+        };
+        return pbAny:pack(structMap);
+    } else if convertedData is boolean {
+        // For boolean values
+        map<json> structMap = {
+            "value": convertedData
+        };
+        return pbAny:pack(structMap);
+    } else if convertedData is () {
+        // For null values
+        map<json> structMap = {
+            "null_value": ()
+        };
+        return pbAny:pack(structMap);
+    } else if convertedData is json[] {
+        // For arrays, wrap in a list_value structure
+        map<json> structMap = {
+            "values": convertedData
+        };
+        return pbAny:pack(structMap);
+    } else if convertedData is map<json> {
+        // For objects, pack directly as structured data instead of converting to string
+        return pbAny:pack(convertedData);
+    } else {
+        return error("Unsupported data type: " + convertedData.toString());
+    }
+}
+
 service / on ep0 {
     # Delete an entity
     #
@@ -49,9 +127,11 @@ service / on ep0 {
     # + return - Entity created 
     resource function post entities(@http:Payload json jsonPayload) returns Entity|error {
         // Convert JSON to Entity with custom mapping
+        io:println("[CreateEntity] jsonPayload: ", jsonPayload);
         Entity payload = check convertJsonToEntity(jsonPayload);
         
-        io:println(payload);
+        io:println("[CreateEntity] Protobuf Payload: ", payload);
+        
         var result = ep->CreateEntity(payload);
         if result is error {
             log:printError("gRPC CreateEntity failed: ", result);
@@ -152,7 +232,6 @@ function convertJsonToEntity(json jsonPayload) returns Entity|error {
             json[] attributesJsonArray = <json[]>check jsonPayload.attributes;
             foreach json item in attributesJsonArray {
                 string key = (check item.key).toString();
-                
                 // Add safe type checking for value
                 json valueJson = check item.value;
                 TimeBasedValue[] timeBasedValues = [];
@@ -170,12 +249,22 @@ function convertJsonToEntity(json jsonPayload) returns Entity|error {
                 } else {
                     // Handle the case when value is not an array (could be a single object)
                     // Create a single TimeBasedValue object
-                    TimeBasedValue tbv = {
-                        startTime: valueJson?.startTime is () ? "" : (check valueJson.startTime).toString(),
-                        endTime: valueJson?.endTime is () ? "" : (check valueJson.endTime).toString(),
-                        value: check pbAny:pack(valueJson?.value is () ? "" : (check valueJson.value).toString())
-                    };
-                    timeBasedValues.push(tbv);
+                    json[] valuesJson = <json[]>check valueJson.values;
+
+                    foreach json valueItem in valuesJson {
+                        string startTime = valueItem?.startTime is () ? "" : (check valueItem.startTime).toString();
+                        string endTime = valueItem?.endTime is () ? "" : (check valueItem.endTime).toString();
+                        json value = valueItem?.value is () ? "" : (check valueItem.value).toJson();
+                        // Access specific keys for tabular data
+                        pbAny:Any tbvValue = check convertJsonToAny(value);
+                        
+                        TimeBasedValue tbv = {
+                            startTime: startTime,
+                            endTime: endTime,
+                            value: tbvValue
+                        };
+                        timeBasedValues.push(tbv);
+                    }
                 }
                 
                 TimeBasedValueList tbvList = {

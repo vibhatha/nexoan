@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"lk/datafoundation/crud-api/commons"
+	dbcommons "lk/datafoundation/crud-api/commons/db"
 	pb "lk/datafoundation/crud-api/lk/datafoundation/crud-api"
 	"lk/datafoundation/crud-api/pkg/storageinference"
 
@@ -51,6 +52,7 @@ type AttributeMetadata struct {
 	StoragePath   string // Path/location in the specific storage system
 	Created       time.Time
 	Updated       time.Time
+	EndTime       time.Time
 	Schema        map[string]interface{} // Schema information
 }
 
@@ -111,6 +113,8 @@ func (g *GraphMetadataManager) CreateAttribute(ctx context.Context, metadata *At
 func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, metadata *AttributeMetadata) error {
 	fmt.Printf("Creating attribute look up graph: Entity=%s, Attribute=%s, StorageType=%s, Path=%s\n",
 		metadata.EntityID, metadata.AttributeName, metadata.StorageType, metadata.StoragePath)
+	// TODO: Explore a way to update the Look up graph 	
+	// FIXME: https://github.com/LDFLK/nexoan/issues/288
 
 	// create the attribute node in the graph
 	// attribute core data is stored in the graph
@@ -125,8 +129,8 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 			Minor: string(metadata.StorageType),
 		},
 		Name:          commons.CreateTimeBasedValue(metadata.Created.Format(time.RFC3339), "", metadata.AttributeName),
-		Created:       metadata.Created.Format(time.RFC3339),
-		Terminated:    "",
+		Created:       metadata.Created.Format(time.RFC3339), // contains the data object's time relation with the world
+		Terminated:    "",                                    // TODO: Implement invalidating a dataset for a specific time range
 		Metadata:      MakeMetadataOfAttributeMetadata(metadata),
 		Attributes:    make(map[string]*pb.TimeBasedValueList),
 		Relationships: make(map[string]*pb.Relationship),
@@ -146,24 +150,31 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 		},
 	}
 
-	neo4jRepository, err := commons.GetNeo4jRepository(ctx)
+	neo4jRepository, err := dbcommons.GetNeo4jRepository(ctx)
 	if err != nil {
 		log.Printf("[GraphMetadataManager.CreateAttribute] Error getting Neo4j repository: %v", err)
 		return err
 	}
 
-	success, err := neo4jRepository.HandleGraphEntityCreation(ctx, attributeNode)
-	if !success {
-		log.Printf("[GraphMetadataManager.CreateAttribute] Error creating graph entity: %v", err)
-		return err
+	// Check if the attribute node already exists
+	existingEntity, err := neo4jRepository.ReadGraphEntity(ctx, metadata.AttributeID)
+	if err == nil && existingEntity != nil {
+		log.Printf("[GraphMetadataManager.CreateAttribute] Attribute node already exists: %s, skipping creation", metadata.AttributeID)
+		// Node already exists, we can still proceed to create/update the relationship
+	} else {
+		// Node doesn't exist, create it
+		success, err := neo4jRepository.HandleGraphEntityCreation(ctx, attributeNode)
+		if !success {
+			log.Printf("[GraphMetadataManager.CreateAttribute] Error creating attributeNode as a graph entity: %v", err)
+			return err
+		}
+		log.Printf("[GraphMetadataManager.CreateAttribute] Successfully created attribute node for entity: %s, attribute: %s", metadata.EntityID, metadata.AttributeName)
 	}
-
-	log.Printf("[GraphMetadataManager.CreateAttribute] Successfully created attribute node for entity: %s, attribute: %s", metadata.EntityID, metadata.AttributeName)
 
 	// create the relationship between the entity and the attribute
 	err = neo4jRepository.HandleGraphRelationshipsUpdate(ctx, parentNode)
 	if err != nil {
-		log.Printf("[GraphMetadataManager.CreateAttribute] Error creating relationship: %v", err)
+		log.Printf("[GraphMetadataManager.CreateAttribute] Error creating relationship between entity and attribute: %v", err)
 		return err
 	}
 
@@ -171,15 +182,21 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 
 	// create the attribute metadata in the mongo database
 	// stored parameters: attribute_id, attribute_name, storage_type, storage_path, updated, schema
-	mongoRepository := commons.GetMongoRepository(ctx)
+	mongoRepository := dbcommons.GetMongoRepository(ctx)
 
-	_, err = mongoRepository.CreateEntity(ctx, attributeNode)
-	if err != nil {
-		log.Printf("[GraphMetadataManager.CreateAttribute] Error creating attribute metadata: %v", err)
-		return err
+	// Check if the attribute metadata already exists
+	existingMetadata, err := mongoRepository.ReadEntity(ctx, metadata.AttributeID)
+	if err == nil && existingMetadata != nil {
+		log.Printf("[GraphMetadataManager.CreateAttribute] Attribute metadata already exists: %s, skipping creation", metadata.AttributeID)
+	} else {
+		// Metadata doesn't exist, create it
+		_, err = mongoRepository.CreateEntity(ctx, attributeNode)
+		if err != nil {
+			log.Printf("[GraphMetadataManager.CreateAttribute] Error creating attribute metadata: %v", err)
+			return err
+		}
+		log.Printf("[GraphMetadataManager.CreateAttribute] Successfully created attribute metadata for entity: %s, attribute: %s", metadata.EntityID, metadata.AttributeName)
 	}
-
-	log.Printf("[GraphMetadataManager.CreateAttribute] Successfully created attribute metadata for entity: %s, attribute: %s", metadata.EntityID, metadata.AttributeName)
 
 	log.Print("Lookup graph created successfully!")
 
@@ -217,23 +234,23 @@ func MakeRelationshipFromAttributeMetadata(metadata *AttributeMetadata) *pb.Rela
 		RelatedEntityId: metadata.AttributeID,
 		Name:            IS_ATTRIBUTE_RELATIONSHIP,
 		StartTime:       metadata.Created.Format(time.RFC3339),
-		EndTime:         "",
+		EndTime:         "", // TODO: Implement invalidating a relationship for a specific time range
 		Direction:       IS_ATTRIBUTE_RELATIONSHIP_DIRECTION,
 	}
 }
 
 // GetAttributeMetadata retrieves metadata for an attribute
-func (g *GraphMetadataManager) GetAttribute(ctx context.Context, entityID string, attributeName string) (*AttributeMetadata, error) {
+func (g *GraphMetadataManager) GetAttribute(ctx context.Context, entityID string, attributeName string, startTime time.Time) (*AttributeMetadata, error) {
 	fmt.Printf("Getting attribute metadata: EntityID=%s, AttributeName=%s\n", entityID, attributeName)
 
-	neo4jRepository, err := commons.GetNeo4jRepository(ctx)
+	neo4jRepository, err := dbcommons.GetNeo4jRepository(ctx)
 	if err != nil {
 		log.Printf("[GraphMetadataManager.GetAttribute] Error getting Neo4j repository: %v", err)
 		return nil, err
 	}
 
 	// Get all IS_ATTRIBUTE relationships for the entity
-	filteredRelationships, err := neo4jRepository.ReadFilteredRelationships(ctx, entityID, map[string]interface{}{"name": IS_ATTRIBUTE_RELATIONSHIP, "direction": IS_ATTRIBUTE_RELATIONSHIP_DIRECTION}, "")
+	filteredRelationships, err := neo4jRepository.ReadFilteredRelationships(ctx, entityID, map[string]interface{}{"name": IS_ATTRIBUTE_RELATIONSHIP, "direction": IS_ATTRIBUTE_RELATIONSHIP_DIRECTION, "startTime": startTime.Format(time.RFC3339)}, "")
 	if err != nil {
 		log.Printf("[GraphMetadataManager.GetAttribute] Error getting relationships: %v", err)
 		return nil, err
@@ -280,7 +297,7 @@ func (g *GraphMetadataManager) GetAttribute(ctx context.Context, entityID string
 	}
 
 	// Get the attribute metadata from MongoDB
-	mongoRepository := commons.GetMongoRepository(ctx)
+	mongoRepository := dbcommons.GetMongoRepository(ctx)
 	attributeMetadataEntity, err := mongoRepository.ReadEntity(ctx, targetAttributeID)
 	if err != nil {
 		log.Printf("[GraphMetadataManager.GetAttribute] Error getting attribute metadata from MongoDB for attribute %s (entity %s): %v", targetAttributeID, entityID, err)
@@ -292,6 +309,7 @@ func (g *GraphMetadataManager) GetAttribute(ctx context.Context, entityID string
 
 	// Convert storage type string to StorageType enum
 	storageType := commons.ConvertStorageTypeStringToEnum(storageTypeStr)
+	log.Printf("[GraphMetadataManager.GetAttribute] storageType: %s", storageType)
 
 	// Get creation time from the attribute entity
 	_, _, createdTimeStr, _, err := neo4jRepository.GetGraphEntity(ctx, targetAttributeID)
@@ -319,7 +337,7 @@ func (g *GraphMetadataManager) GetAttribute(ctx context.Context, entityID string
 func (g *GraphMetadataManager) ListAttributes(ctx context.Context, entityID string) ([]*AttributeMetadata, error) {
 	fmt.Printf("Listing attributes for entity: %s\n", entityID)
 
-	neo4jRepository, err := commons.GetNeo4jRepository(ctx)
+	neo4jRepository, err := dbcommons.GetNeo4jRepository(ctx)
 	if err != nil {
 		log.Printf("[GraphMetadataManager.ListAttributes] Error getting Neo4j repository: %v", err)
 		return nil, err
@@ -351,7 +369,7 @@ func (g *GraphMetadataManager) ListAttributes(ctx context.Context, entityID stri
 		attributeNameStr := commons.ExtractStringFromAny(attributeName.Value)
 
 		// Get the attribute metadata from the mongo database
-		mongoRepository := commons.GetMongoRepository(ctx)
+		mongoRepository := dbcommons.GetMongoRepository(ctx)
 		attributeMetadataEntity, err := mongoRepository.ReadEntity(ctx, attributeID)
 		if err != nil {
 			log.Printf("[GraphMetadataManager.ListAttributes] Error getting attribute metadata from MongoDB for attribute %s (entity %s): %v", attributeID, entityID, err)
@@ -388,7 +406,6 @@ func (g *GraphMetadataManager) ListAttributes(ctx context.Context, entityID stri
 func (g *GraphMetadataManager) UpdateAttribute(ctx context.Context, metadata *AttributeMetadata) error {
 	// TODO: Implement Neo4j or graph database connection
 	// This would update the attribute node properties
-
 	fmt.Printf("Updating attribute metadata: Entity=%s, Attribute=%s\n", metadata.EntityID, metadata.AttributeName)
 
 	return nil
