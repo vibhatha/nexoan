@@ -130,9 +130,7 @@ rm -f /var/lib/postgresql/data/postmaster.pid
 
 # Ensure choreo user has proper permissions (volumes may reset ownership)
 log "INFO" "Setting up permissions for choreo user..."
-# Set permissions (ownership should already be correct from Dockerfile)
-chmod -R 755 /var/lib/postgresql/backup /var/log/postgresql
-chmod -R 700 /var/lib/postgresql/data
+# Note: Permissions are already set correctly in Dockerfile
 
 # Initialize PostgreSQL data directory if it's empty
 if [ ! -d "/var/lib/postgresql/data" ] || [ -z "$(ls -A /var/lib/postgresql/data 2>/dev/null)" ]; then
