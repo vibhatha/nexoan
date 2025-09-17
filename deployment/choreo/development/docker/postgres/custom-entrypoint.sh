@@ -124,18 +124,16 @@ restore_from_github() {
     fi
 }
 
+# Clean up any existing lock files from previous runs
+log "INFO" "Cleaning up any existing lock files..."
+rm -f /var/lib/postgresql/data/postmaster.pid
+
 # Ensure choreo user has proper permissions (volumes may reset ownership)
 log "INFO" "Setting up permissions for choreo user..."
-# Use sudo to change ownership since we're running as choreo user but need root privileges
-if command -v sudo >/dev/null 2>&1; then
-    sudo chown -R 10014:10014 /var/lib/postgresql/backup /var/lib/postgresql/data /var/log/postgresql
-    sudo chmod -R 755 /var/lib/postgresql/backup /var/log/postgresql
-    sudo chmod -R 700 /var/lib/postgresql/data
-else
-    # If sudo is not available, we need to run as root initially
-    log "ERROR" "sudo not available and running as choreo user - cannot set permissions"
-    exit 1
-fi
+# Direct ownership change as choreo user
+chown -R 10014:10014 /var/lib/postgresql/backup /var/lib/postgresql/data /var/log/postgresql
+chmod -R 755 /var/lib/postgresql/backup /var/log/postgresql
+chmod -R 700 /var/lib/postgresql/data
 
 # Initialize PostgreSQL data directory if it's empty
 if [ ! -d "/var/lib/postgresql/data" ] || [ -z "$(ls -A /var/lib/postgresql/data 2>/dev/null)" ]; then
@@ -187,6 +185,9 @@ fi
 log "INFO" "Stopping background PostgreSQL..."
 /usr/lib/postgresql/16/bin/pg_ctl stop -D /var/lib/postgresql/data -m smart || kill $POSTGRES_PID 2>/dev/null || true
 sleep 3
+
+# Clean up any remaining lock files
+rm -f /var/lib/postgresql/data/postmaster.pid
 
 # Start PostgreSQL in foreground as choreo user
 log "INFO" "Starting PostgreSQL in foreground mode..."
