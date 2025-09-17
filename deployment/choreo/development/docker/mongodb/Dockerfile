@@ -27,12 +27,10 @@ RUN groupadd -g 10014 choreo && \
     chmod -R 755 /home/choreouser && \
     echo "choreouser ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-# Create directories and set permissions for both mongodb and choreo users
+# Create directories with proper permissions for choreo user
 RUN mkdir -p /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb \
-    && chown -R mongodb:root /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb \
-    && chmod -R 755 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb \
-    && chown -R 10014:10014 /data/db /data/configdb /data/backup /var/run/mongodb /var/log/mongodb \
-    && chmod -R 755 /data/db /data/configdb /data/backup /var/run/mongodb /var/log/mongodb
+    && chown -R 10014:10014 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb \
+    && chmod -R 755 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb
 
 # Set environment variables
 ENV MONGO_INITDB_ROOT_USERNAME=admin
@@ -58,12 +56,7 @@ systemLog:\n\
 processManagement:\n\
   fork: false" > /etc/mongod.conf
 
-# Create additional directories for backups and set permissions for choreo user
-RUN mkdir -p /data/backup /var/run/mongodb && \
-    chown -R mongodb:root /data/backup /var/run/mongodb && \
-    chmod -R 755 /data/backup /var/run/mongodb && \
-    chown -R 10014:10014 /data/backup /var/run/mongodb && \
-    chmod -R 755 /data/backup /var/run/mongodb
+# Additional directories are already created above with proper permissions
 
 # Create entrypoint script with GitHub backup restore
 RUN echo '#!/bin/bash\n\
@@ -73,6 +66,11 @@ set -e\n\
 log() {\n\
     echo "[$(date +%Y-%m-%d\ %H:%M:%S)] $1: $2"\n\
 }\n\
+\n\
+# Ensure choreo user has proper permissions (volumes may reset ownership)\n\
+log "INFO" "Setting up permissions for choreo user..."\n\
+sudo chown -R 10014:10014 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb\n\
+sudo chmod -R 755 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb\n\
 \n\
 # Function to restore from GitHub backup\n\
 restore_from_github() {\n\
@@ -214,8 +212,8 @@ log "INFO" "Starting MongoDB in foreground mode..."\n\
 exec mongod --dbpath /data/db --logpath /var/log/mongodb/mongod.log --bind_ip_all' > /custom-entrypoint.sh \
     && chmod +x /custom-entrypoint.sh
 
-# Keep running as root for MongoDB to work properly
-# MongoDB needs to run as mongodb user, not choreo user
+# Switch to choreo user (required for Choreo platform)
+USER 10014
 
 # Define volumes for data persistence
 VOLUME ["/data/db", "/data/configdb", "/data/backup"]
