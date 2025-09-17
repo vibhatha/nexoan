@@ -5,7 +5,9 @@ name: ldf-choreo
 services:
   mongodb-choreo:
     platform: linux/amd64
-    image: mongo:4.4
+    build:
+      context: ./deployment/choreo/development/docker/mongodb
+      dockerfile: Dockerfile
     container_name: mongodb-choreo
     ports:
       - "27017:27017"
@@ -16,6 +18,12 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_DATABASE=nexoan
+      # GitHub backup restore configuration
+      - GITHUB_BACKUP_REPO=${NEXOAN_GITHUB_BACKUP_REPO:-LDFLK/data-backups}
+      - BACKUP_VERSION=${NEXOAN_DB_BACKUP_VERSION:-0.0.1}
+      - BACKUP_ENVIRONMENT=${NEXOAN_CHOREO_ENVIRONMENT:-development}
+      - RESTORE_FROM_GITHUB=true
     healthcheck:
       test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -25,7 +33,9 @@ services:
 
   neo4j-choreo:
     platform: linux/amd64
-    image: neo4j:5.12.0
+    build:
+      context: ./deployment/choreo/development/docker/neo4j
+      dockerfile: Dockerfile
     container_name: neo4j-choreo
     ports:
       - "7474:7474"
@@ -37,9 +47,17 @@ services:
       - choreo-network
     environment:
       - NEO4J_AUTH=neo4j/neo4j123
-      - NEO4J_dbms_memory_pagecache_size=1G
-      - NEO4J_dbms_memory_heap_initial__size=1G
-      - NEO4J_dbms_memory_heap_max__size=1G
+      - NEO4J_server_memory_pagecache_size=1G
+      - NEO4J_server_memory_heap_initial__size=1G
+      - NEO4J_server_memory_heap_max__size=1G
+      - NEO4J_server_default__listen__address=0.0.0.0
+      - NEO4J_server_bolt_listen__address=0.0.0.0:7687
+      - NEO4J_server_http_listen__address=0.0.0.0:7474
+      # GitHub backup restore configuration
+      - GITHUB_BACKUP_REPO=${NEXOAN_GITHUB_BACKUP_REPO:-LDFLK/data-backups}
+      - BACKUP_VERSION=${NEXOAN_DB_BACKUP_VERSION:-0.0.1}
+      - BACKUP_ENVIRONMENT=${NEXOAN_CHOREO_ENVIRONMENT:-development}
+      - RESTORE_FROM_GITHUB=true
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
       interval: 30s
@@ -48,7 +66,9 @@ services:
 
   postgres-choreo:
     platform: linux/amd64
-    image: postgres:16
+    build:
+      context: ./deployment/choreo/development/docker/postgres
+      dockerfile: Dockerfile
     container_name: postgres-choreo
     ports:
       - "5432:5432"
@@ -59,12 +79,47 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=ldf_choreo_nexoan
+      - POSTGRES_DB=nexoan
+      # GitHub backup restore configuration
+      - GITHUB_BACKUP_REPO=${NEXOAN_GITHUB_BACKUP_REPO:-LDFLK/data-backups}
+      - BACKUP_VERSION=${NEXOAN_DB_BACKUP_VERSION:-0.0.1}
+      - BACKUP_ENVIRONMENT=${NEXOAN_CHOREO_ENVIRONMENT:-development}
+      - RESTORE_FROM_GITHUB=true
+      - FORCE_RESTORE=${FORCE_RESTORE:-false}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  heartbeat-choreo:
+    platform: linux/amd64
+    build:
+      context: ./deployment/choreo/development/docker/heartbeat
+      dockerfile: Dockerfile
+    container_name: heartbeat-choreo
+    networks:
+      - choreo-network
+    environment:
+      - NEO4J_URL=http://neo4j-choreo:7474
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=neo4j123
+      - POSTGRES_HOST=postgres-choreo
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=nexoan
+      - MONGODB_HOST=mongodb-choreo
+      - MONGODB_PORT=27017
+      - MONGODB_USER=admin
+      - MONGODB_PASSWORD=admin123
+      - MONGODB_DB=nexoan
+      - HEARTBEAT_INTERVAL=30
+    depends_on:
+      - neo4j-choreo
+      - mongodb-choreo
+      - postgres-choreo
+    restart: unless-stopped
 
   cleanup-choreo:
     platform: linux/amd64
