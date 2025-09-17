@@ -12,6 +12,13 @@ RUN pip install --no-cache-dir \
     psycopg2-binary \
     pymongo
 
+# Create choreo user and group (required for Choreo platform)
+RUN groupadd -g 10014 choreo && \
+    useradd -u 10014 -g choreo -s /bin/bash -m choreouser && \
+    mkdir -p /home/choreouser/.cache && \
+    chown -R choreouser:choreo /home/choreouser && \
+    chmod -R 755 /home/choreouser
+
 # Set working directory
 WORKDIR /app
 
@@ -34,6 +41,9 @@ ENV NEO4J_URL \
     MONGODB_PASSWORD \
     MONGODB_DB \
     HEARTBEAT_INTERVAL
+
+# Switch to choreo user (required for Choreo platform)
+USER 10014
 
 # Health check
 HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \

@@ -44,6 +44,20 @@ class DatabaseHeartbeat:
         self.neo4j_user = os.getenv('NEO4J_USER')
         self.neo4j_password = os.getenv('NEO4J_PASSWORD')
         
+        self.postgres_host = os.getenv('POSTGRES_HOST')
+        self.postgres_port = os.getenv('POSTGRES_PORT')
+        self.postgres_user = os.getenv('POSTGRES_USER')
+        self.postgres_password = os.getenv('POSTGRES_PASSWORD')
+        self.postgres_db = os.getenv('POSTGRES_DB')
+        
+        self.mongodb_host = os.getenv('MONGODB_HOST')
+        self.mongodb_port = os.getenv('MONGODB_PORT')
+        self.mongodb_user = os.getenv('MONGODB_USER')
+        self.mongodb_password = os.getenv('MONGODB_PASSWORD')
+        self.mongodb_db = os.getenv('MONGODB_DB')
+        
+        # Monitoring interval (seconds)
+        self.interval = int(os.getenv('HEARTBEAT_INTERVAL'))
         
         # Track previous counts for change detection
         self.previous_counts = {
@@ -273,6 +287,33 @@ class DatabaseHeartbeat:
             
             time.sleep(self.interval)
 
+def health_check():
+    """Health check function for Docker HEALTHCHECK"""
+    try:
+        heartbeat = DatabaseHeartbeat()
+        
+        # Quick check of all databases
+        neo4j_ok, _, _ = heartbeat.check_neo4j()
+        postgres_ok, _, _ = heartbeat.check_postgres()
+        mongodb_ok, _, _ = heartbeat.check_mongodb()
+        
+        # Return 0 if at least one database is healthy
+        if neo4j_ok or postgres_ok or mongodb_ok:
+            return 0
+        else:
+            return 1
+            
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return 1
+
 if __name__ == "__main__":
+    import sys
+    
+    # Check if this is a health check
+    if len(sys.argv) > 1 and sys.argv[1] == "--health-check":
+        sys.exit(health_check())
+    
+    # Otherwise run the full heartbeat monitor
     heartbeat = DatabaseHeartbeat()
     heartbeat.run_heartbeat()
