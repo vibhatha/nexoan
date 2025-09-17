@@ -27,7 +27,7 @@ restore_postgres() {
     # Copy backup to PostgreSQL backup directory
     log "INFO" "Copying backup to container..."
     cp "$temp_dir/$backup_name" "/var/lib/postgresql/backup/"
-    chown postgres:postgres "/var/lib/postgresql/backup/$backup_name"
+    # File is already owned by choreo user since we're running as choreo user
     
     # Check what was actually created
     log "INFO" "Checking backup structure in container..."
@@ -35,12 +35,12 @@ restore_postgres() {
     
     # Restore database
     log "INFO" "Restoring PostgreSQL database..."
-    if psql -U postgres -d nexoan -f "/var/lib/postgresql/backup/$backup_name"; then
+    if /usr/lib/postgresql/16/bin/psql -U postgres -d nexoan -f "/var/lib/postgresql/backup/$backup_name"; then
         log "SUCCESS" "PostgreSQL restore completed successfully"
         
         # Verify what was restored
         log "INFO" "Verifying restored database..."
-        psql -U postgres -d nexoan -c "\dt"
+        /usr/lib/postgresql/16/bin/psql -U postgres -d nexoan -c "\dt"
         
         # Clean up
         rm -f "/var/lib/postgresql/backup/$backup_name"
@@ -124,21 +124,36 @@ restore_from_github() {
     fi
 }
 
+# Ensure choreo user has proper permissions (volumes may reset ownership)
+log "INFO" "Setting up permissions for choreo user..."
+# Use sudo to change ownership since we're running as choreo user but need root privileges
+if command -v sudo >/dev/null 2>&1; then
+    sudo chown -R 10014:10014 /var/lib/postgresql/backup /var/lib/postgresql/data /var/log/postgresql
+    sudo chmod -R 755 /var/lib/postgresql/backup /var/log/postgresql
+    sudo chmod -R 700 /var/lib/postgresql/data
+else
+    # If sudo is not available, we need to run as root initially
+    log "ERROR" "sudo not available and running as choreo user - cannot set permissions"
+    exit 1
+fi
+
 # Initialize PostgreSQL data directory if it's empty
 if [ ! -d "/var/lib/postgresql/data" ] || [ -z "$(ls -A /var/lib/postgresql/data 2>/dev/null)" ]; then
     log "INFO" "Initializing PostgreSQL data directory..."
-    docker-entrypoint.sh postgres --initdb
+    # Initialize as choreo user
+    /usr/lib/postgresql/16/bin/initdb -D /var/lib/postgresql/data
 fi
 
 # Start PostgreSQL in background first
 log "INFO" "Starting PostgreSQL in background..."
-docker-entrypoint.sh postgres &
+# Run PostgreSQL as choreo user
+/usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/data &
 POSTGRES_PID=$!
 
 # Wait for PostgreSQL to be ready
 log "INFO" "Waiting for PostgreSQL to be ready..."
 for i in {1..30}; do
-    if pg_isready -U postgres -q; then
+    if /usr/lib/postgresql/16/bin/pg_isready -U postgres -q; then
         log "INFO" "PostgreSQL is ready!"
         break
     fi
@@ -148,12 +163,17 @@ done
 
 # Create nexoan database if it doesn't exist
 log "INFO" "Creating nexoan database if it doesn't exist..."
-createdb -U postgres nexoan 2>/dev/null || true
+/usr/lib/postgresql/16/bin/createdb -U postgres nexoan 2>/dev/null || true
 
 # Check if restore is needed
 if [ "${RESTORE_FROM_GITHUB:-false}" = "true" ]; then
     # Check if nexoan database has any tables
-    table_count=$(psql -U postgres -d nexoan -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | tr -d ' \n' || echo "0")
+    table_count=$(/usr/lib/postgresql/16/bin/psql -U postgres -d nexoan -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | tr -d ' \n' || echo "0")
+    
+    # Ensure table_count is a valid number
+    if ! [[ "$table_count" =~ ^[0-9]+$ ]]; then
+        table_count=0
+    fi
     
     if [ "$table_count" -eq 0 ]; then
         log "INFO" "nexoan database is empty, starting GitHub restore..."
@@ -165,9 +185,9 @@ fi
 
 # Stop the background PostgreSQL gracefully
 log "INFO" "Stopping background PostgreSQL..."
-su - postgres -c "pg_ctl stop -D /var/lib/postgresql/data -m smart" || kill $POSTGRES_PID 2>/dev/null || true
+/usr/lib/postgresql/16/bin/pg_ctl stop -D /var/lib/postgresql/data -m smart || kill $POSTGRES_PID 2>/dev/null || true
 sleep 3
 
-# Start PostgreSQL in foreground
+# Start PostgreSQL in foreground as choreo user
 log "INFO" "Starting PostgreSQL in foreground mode..."
-exec docker-entrypoint.sh postgres
+exec /usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/data
