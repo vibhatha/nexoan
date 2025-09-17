@@ -3,7 +3,7 @@ FROM ubuntu:20.04
 
 # Install prerequisites
 RUN apt-get update && apt-get install -y \
-    wget gnupg2 curl apt-transport-https \
+    wget gnupg2 curl apt-transport-https sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Add MongoDB GPG key and repository for 4.4
@@ -19,10 +19,20 @@ RUN apt-get update && apt-get install -y \
     wget unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directories and set permissions (mongodb user is created by the package)
-RUN mkdir -p /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup \
-    && chown -R mongodb:root /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup \
-    && chmod -R 755 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup
+# Create choreo user and group (required for Choreo platform)
+RUN groupadd -g 10014 choreo && \
+    useradd -u 10014 -g choreo -s /bin/bash -m choreouser && \
+    mkdir -p /home/choreouser/.cache && \
+    chown -R choreouser:choreo /home/choreouser && \
+    chmod -R 755 /home/choreouser && \
+    echo "choreouser ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# Create directories and set permissions for both mongodb and choreo users
+RUN mkdir -p /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb \
+    && chown -R mongodb:root /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb \
+    && chmod -R 755 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb \
+    && chown -R 10014:10014 /data/db /data/configdb /data/backup /var/run/mongodb /var/log/mongodb \
+    && chmod -R 755 /data/db /data/configdb /data/backup /var/run/mongodb /var/log/mongodb
 
 # Set environment variables
 ENV MONGO_INITDB_ROOT_USERNAME=admin
@@ -35,7 +45,7 @@ ENV GITHUB_BACKUP_REPO=${NEXOAN_GITHUB_BACKUP_REPO:-LDFLK/data-backups} \
     BACKUP_ENVIRONMENT=${NEXOAN_CHOREO_ENVIRONMENT:-development} \
     RESTORE_FROM_GITHUB=true
 
-# Create MongoDB configuration
+# Create MongoDB configuration (without fork for choreo user)
 RUN echo "net:\n\
   port: 27017\n\
   bindIp: 0.0.0.0\n\
@@ -46,12 +56,13 @@ systemLog:\n\
   logAppend: true\n\
   path: /var/log/mongodb/mongod.log\n\
 processManagement:\n\
-  fork: true\n\
-  pidFilePath: /var/run/mongodb/mongod.pid" > /etc/mongod.conf
+  fork: false" > /etc/mongod.conf
 
-# Create additional directories for backups
+# Create additional directories for backups and set permissions for choreo user
 RUN mkdir -p /data/backup /var/run/mongodb && \
     chown -R mongodb:root /data/backup /var/run/mongodb && \
+    chmod -R 755 /data/backup /var/run/mongodb && \
+    chown -R 10014:10014 /data/backup /var/run/mongodb && \
     chmod -R 755 /data/backup /var/run/mongodb
 
 # Create entrypoint script with GitHub backup restore
@@ -129,7 +140,6 @@ restore_from_github() {\n\
     # Copy backup to MongoDB backup directory\n\
     log "INFO" "Preparing backup for mongorestore..."\n\
     cp -r "$backup_source" /data/backup/nexoan\n\
-    chown -R mongodb:root /data/backup/nexoan\n\
     \n\
     # Clean up any macOS metadata files\n\
     find /data/backup/nexoan -name "._*" -delete 2>/dev/null || true\n\
@@ -168,10 +178,19 @@ restore_from_github() {\n\
 \n\
 # Start MongoDB in background first\n\
 log "INFO" "Starting MongoDB in background..."\n\
-mongod --config /etc/mongod.conf\n\
+mongod --dbpath /data/db --logpath /var/log/mongodb/mongod.log --bind_ip_all &\n\
+MONGODB_PID=$!\n\
 \n\
 # Wait for MongoDB to start\n\
-sleep 5\n\
+log "INFO" "Waiting for MongoDB to start..."\n\
+for i in {1..30}; do\n\
+    if mongo --eval "db.adminCommand('\''ping'\'')" > /dev/null 2>&1; then\n\
+        log "INFO" "MongoDB is ready!"\n\
+        break\n\
+    fi\n\
+    log "INFO" "Waiting for MongoDB... attempt $i/30"\n\
+    sleep 2\n\
+done\n\
 \n\
 # Restore from GitHub if enabled and database doesn'\''t exist\n\
 if [ "${RESTORE_FROM_GITHUB:-false}" = "true" ]; then\n\
@@ -186,13 +205,17 @@ fi\n\
 \n\
 # Stop the background MongoDB and start in foreground\n\
 log "INFO" "Stopping background MongoDB and starting in foreground..."\n\
-mongo --eval "db.adminCommand('\''shutdown'\'')" > /dev/null 2>&1 || true\n\
+kill $MONGODB_PID 2>/dev/null || true\n\
+wait $MONGODB_PID 2>/dev/null || true\n\
 sleep 3\n\
 \n\
-# Start MongoDB in foreground (without fork)\n\
+# Start MongoDB in foreground\n\
 log "INFO" "Starting MongoDB in foreground mode..."\n\
 exec mongod --dbpath /data/db --logpath /var/log/mongodb/mongod.log --bind_ip_all' > /custom-entrypoint.sh \
     && chmod +x /custom-entrypoint.sh
+
+# Keep running as root for MongoDB to work properly
+# MongoDB needs to run as mongodb user, not choreo user
 
 # Define volumes for data persistence
 VOLUME ["/data/db", "/data/configdb", "/data/backup"]

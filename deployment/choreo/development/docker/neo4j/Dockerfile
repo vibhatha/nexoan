@@ -15,6 +15,13 @@ RUN apt-get update && apt-get install -y neo4j=1:5.12.0 \
     wget unzip curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Create choreo user and group (required for Choreo platform)
+RUN groupadd -g 10014 choreo && \
+    useradd -u 10014 -g choreo -s /bin/bash -m choreouser && \
+    mkdir -p /home/choreouser/.cache && \
+    chown -R choreouser:choreo /home/choreouser && \
+    chmod -R 755 /home/choreouser
+
 # Environment defaults (can be overridden at runtime)
 ENV NEO4J_AUTH=neo4j/neo4j123 \
     NEO4J_server_memory_pagecache_size=1G \
@@ -33,10 +40,10 @@ ENV NEO4J_AUTH=neo4j/neo4j123 \
     BACKUP_ENVIRONMENT=${NEXOAN_CHOREO_ENVIRONMENT:-development} \
     RESTORE_FROM_GITHUB=true
 
-# Create data directories
-RUN mkdir -p /neo4j_data /neo4j_logs /neo4j_plugins \
-    && chown -R root:root /neo4j_data /neo4j_logs /neo4j_plugins \
-    && chmod -R 755 /neo4j_data /neo4j_logs /neo4j_plugins
+# Create data directories with proper permissions for choreo user
+RUN mkdir -p /neo4j_data /neo4j_logs /neo4j_plugins /var/log/neo4j /var/lib/neo4j/data /var/lib/neo4j/run \
+    && chown -R 10014:10014 /neo4j_data /neo4j_logs /neo4j_plugins /var/log/neo4j /var/lib/neo4j /var/lib/neo4j/run \
+    && chmod -R 755 /neo4j_data /neo4j_logs /neo4j_plugins /var/log/neo4j /var/lib/neo4j /var/lib/neo4j/run
 
 # Configure Neo4j to listen on all interfaces
 RUN echo "server.default_listen_address=0.0.0.0" >> /etc/neo4j/neo4j.conf \
@@ -50,7 +57,7 @@ set -e\n\
 \n\
 # Logging function\n\
 log() {\n\
-    echo "[$(date +\"%Y-%m-%d %H:%M:%S\")] $1: $2"\n\
+    echo "[$(date +%Y-%m-%d\ %H:%M:%S)] $1: $2"\n\
 }\n\
 \n\
 # Function to restore from GitHub backup\n\
@@ -138,6 +145,9 @@ fi\n\
 log "INFO" "Starting Neo4j..."\n\
 exec neo4j console' > /docker-entrypoint.sh \
     && chmod +x /docker-entrypoint.sh
+
+# Switch to choreo user (required for Choreo platform)
+USER 10014
 
 # Expose ports
 EXPOSE 7474 7687
