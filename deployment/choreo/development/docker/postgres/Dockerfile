@@ -26,10 +26,9 @@ ENV GITHUB_BACKUP_REPO=${NEXOAN_GITHUB_BACKUP_REPO:-LDFLK/data-backups} \
 
 # Create data directories with proper permissions
 RUN mkdir -p /var/lib/postgresql/backup /var/lib/postgresql/data /var/log/postgresql && \
-    chown -R postgres:postgres /var/lib/postgresql/data && \
-    chmod -R 700 /var/lib/postgresql/data && \
-    chown -R 10014:10014 /var/lib/postgresql/backup /var/log/postgresql && \
-    chmod -R 755 /var/lib/postgresql/backup /var/log/postgresql
+    chown -R 10014:10014 /var/lib/postgresql/backup /var/lib/postgresql/data /var/log/postgresql && \
+    chmod -R 755 /var/lib/postgresql/backup /var/log/postgresql && \
+    chmod -R 700 /var/lib/postgresql/data
 
 # Copy custom entrypoint script
 COPY custom-entrypoint.sh /custom-entrypoint.sh
