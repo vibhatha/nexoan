@@ -17,6 +17,12 @@ RUN groupadd -g 10014 choreo && \
 RUN mkdir -p /var/lib/postgresql/backup /var/lib/postgresql/data /var/log/postgresql && \
     chown -R 10014:10014 /var/lib/postgresql/backup /var/lib/postgresql/data /var/log/postgresql
 
+# Initialize PostgreSQL data directory as root (before switching to choreo user)
+RUN /usr/lib/postgresql/16/bin/initdb -D /var/lib/postgresql/data
+
+# Ensure proper ownership of the initialized data directory for choreo user
+RUN chown -R 10014:10014 /var/lib/postgresql/data
+
 # Switch to choreo user (required for Choreo platform)
 USER 10014
 
@@ -198,8 +204,6 @@ log "INFO" "Starting PostgreSQL in foreground mode..."\n\
 exec /usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/data' > /home/choreouser/custom-entrypoint.sh \
     && chmod +x /home/choreouser/custom-entrypoint.sh
 
-# Initialize PostgreSQL data directory as choreo user
-RUN /usr/lib/postgresql/16/bin/initdb -D /var/lib/postgresql/data
 
 # Start PostgreSQL in background for setup
 RUN /usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/data &
