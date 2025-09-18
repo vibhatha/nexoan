@@ -13,15 +13,17 @@ RUN groupadd -g 10014 choreo && \
     chown -R choreouser:choreo /home/choreouser && \
     chmod -R 755 /home/choreouser
 
-# Create data directories as root and set ownership to choreo user
+# Create data directories as root and set ownership to postgres user for initdb
 RUN mkdir -p /var/lib/postgresql/backup /var/lib/postgresql/data /var/log/postgresql && \
-    chown -R 10014:10014 /var/lib/postgresql/backup /var/lib/postgresql/data /var/log/postgresql
+    chown -R postgres:postgres /var/lib/postgresql/backup /var/lib/postgresql/data /var/log/postgresql
 
-# Initialize PostgreSQL data directory as root (before switching to choreo user)
+# Initialize PostgreSQL data directory as postgres user (initdb requires non-root user)
+USER postgres
 RUN /usr/lib/postgresql/16/bin/initdb -D /var/lib/postgresql/data
 
-# Ensure proper ownership of the initialized data directory for choreo user
-RUN chown -R 10014:10014 /var/lib/postgresql/data
+# Switch back to root to adjust ownership for choreo user
+USER root
+RUN chown -R 10014:10014 /var/lib/postgresql/backup /var/lib/postgresql/data /var/log/postgresql
 
 # Switch to choreo user (required for Choreo platform)
 USER 10014
