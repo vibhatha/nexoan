@@ -151,7 +151,7 @@ services:
   crud-choreo:
     platform: linux/amd64
     build:
-      context: .
+      context: ./nexoan/crud-api
       dockerfile: Dockerfile.crud.choreo
     container_name: crud-choreo
     ports:

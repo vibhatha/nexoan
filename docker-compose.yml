@@ -102,7 +102,7 @@ services:
   crud:
     platform: linux/amd64
     build:
-      context: .
+      context: ./nexoan/crud-api
       dockerfile: Dockerfile.crud
       args:
         - DOCKER_DEFAULT_PLATFORM=linux/amd64
