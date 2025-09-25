@@ -13,6 +13,8 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_choreo_data:/data/db
+      - mongodb_choreo_config:/data/configdb
+      - mongodb_choreo_backup:/data/backup
     networks:
       - choreo-network
     environment:
@@ -28,8 +30,8 @@ services:
       test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 10s
-      retries: 5
-      start_period: 30s
+      retries: 10
+      start_period: 60s
 
   neo4j-choreo:
     platform: linux/amd64
@@ -272,6 +274,8 @@ networks:
 
 volumes:
   mongodb_choreo_data:
+  mongodb_choreo_config:
+  mongodb_choreo_backup:
   neo4j_choreo_data:
   neo4j_choreo_logs:
   postgres_choreo_data:
