@@ -127,7 +127,7 @@ services:
   cleanup-choreo:
     platform: linux/amd64
     build:
-      context: .
+      context: ./deployment/docker/cleanup
       dockerfile: Dockerfile.cleanup.choreo
     container_name: cleanup-choreo
     networks:

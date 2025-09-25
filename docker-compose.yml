@@ -76,7 +76,7 @@ services:
   cleanup:
     platform: linux/amd64
     build:
-      context: .
+      context: ./deployment/docker/cleanup
       dockerfile: Dockerfile.cleanup
     container_name: cleanup
     networks:
