@@ -221,7 +221,7 @@ services:
   query-choreo:
     platform: linux/amd64
     build:
-      context: .
+      context: ./nexoan/query-api
       dockerfile: Dockerfile.query.choreo
     container_name: query-choreo
     ports:

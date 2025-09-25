@@ -31,8 +31,7 @@ ENV BAL_CONFIG_VAR_QUERYSERVICEHOST=${BAL_CONFIG_VAR_QUERYSERVICEHOST:-0.0.0.0}
 ENV BAL_CONFIG_VAR_QUERYSERVICEPORT=${BAL_CONFIG_VAR_QUERYSERVICEPORT:-8081}
 
 # Build the Ballerina service
-RUN cd nexoan/query-api && \
-    bal build
+RUN bal build
 
 EXPOSE 8081
 
@@ -49,10 +48,10 @@ done\n\
 echo "CRUD service is ready!"\n\
 \n\
 echo "Run ballerina test..."\n\
-bal test nexoan/query-api\n\
+bal test\n\
 \n\
 echo "Starting Query service..."\n\
-exec bal run nexoan/query-api\n' > /app/start.sh && \
+exec bal run\n' > /app/start.sh && \
     chmod +x /app/start.sh && \
     dos2unix /app/start.sh
 

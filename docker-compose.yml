@@ -169,7 +169,7 @@ services:
   query:
     platform: linux/amd64
     build:
-      context: .
+      context: ./nexoan/query-api
       dockerfile: Dockerfile.query
     container_name: query
     ports:
