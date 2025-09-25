@@ -31,8 +31,7 @@ ENV BAL_CONFIG_VAR_UPDATESERVICEHOST=${UPDATE_SERVICE_HOST:-0.0.0.0}
 ENV BAL_CONFIG_VAR_UPDATESERVICEPORT=${UPDATE_SERVICE_PORT:-8080}
 
 # Build the Ballerina service
-RUN cd nexoan/update-api && \
-    bal build
+RUN bal build
 
 EXPOSE 8080
 
@@ -50,10 +49,10 @@ done\n\
 echo "CRUD service is ready!"\n\
 \n\
 echo "Run ballerina test..."\n\
-bal test nexoan/update-api\n\
+bal test\n\
 \n\
 echo "Starting Update service..."\n\
-exec bal run nexoan/update-api\n' > /app/start.sh && \
+exec bal run\n' > /app/start.sh && \
     chmod +x /app/start.sh && \
     dos2unix /app/start.sh
 

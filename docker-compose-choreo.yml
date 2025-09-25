@@ -197,7 +197,7 @@ services:
   update-choreo:
     platform: linux/amd64
     build:
-      context: .
+      context: ./nexoan/update-api
       dockerfile: Dockerfile.update.choreo
     container_name: update-choreo
     ports:

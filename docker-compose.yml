@@ -145,7 +145,7 @@ services:
   update:
     platform: linux/amd64
     build:
-      context: .
+      context: ./nexoan/update-api
       dockerfile: Dockerfile.update
     container_name: update
     ports:
