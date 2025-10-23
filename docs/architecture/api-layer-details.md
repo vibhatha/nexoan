@@ -1,47 +1,32 @@
 # API Layer - Detailed Architecture
 
-This document provides comprehensive details about the Update API and Query API layers of the Nexoan system.
+This document provides comprehensive details about the Ingestion API and Read API layers of the OpenGIN system.
 
 ---
 
 ## Overview
 
-The API Layer consists of two Ballerina-based REST services that provide external access to the Nexoan system:
-- **Update API**: Handles entity mutations (CREATE, UPDATE, DELETE)
-- **Query API**: Handles entity queries and retrieval
+The API Layer consists of two Ballerina-based REST services that provide external access to the OpenGIN system:
+- **Ingestion API**: Handles entity mutations (CREATE, UPDATE, DELETE)
+- **Read API**: Handles entity queries and retrieval
 
 Both APIs act as translation layers between external HTTP/JSON clients and the internal gRPC/Protobuf CRUD service.
 
 ---
 
-## Update API
+## Ingestion API
 
 ### Overview
 
-**Location**: `nexoan/update-api/`  
+**Location**: `opengin/ingestion-api/`  
 **Language**: Ballerina  
 **Protocol**: HTTP/REST + JSON  
 **Port**: 8080  
-**Contract**: `nexoan/contracts/rest/update_api.yaml`
-
-### Directory Structure
-
-```
-nexoan/update-api/
-├── update_api_service.bal      # Main service implementation
-├── types_v1_pb.bal              # Generated protobuf types for Ballerina
-├── Ballerina.toml               # Package configuration
-├── Dependencies.toml            # Dependency versions
-├── env.template                 # Environment variable template
-├── utils/                       # Utility functions
-├── tests/
-│   └── service_test.bal         # Service tests
-└── target/                      # Build outputs
-```
+**Contract**: `opengin/contracts/rest/ingestion_api.yaml`
 
 ### Service Implementation
 
-**File**: `update_api_service.bal`
+**File**: `ingestion_api_service.bal`
 
 The service exposes REST endpoints following OpenAPI specification:
 
@@ -221,7 +206,7 @@ Content-Type: application/json
 - `200 OK`: Entity successfully updated
 - `404 Not Found`: Entity doesn't exist
 - `400 Bad Request`: Invalid update data
-- `500 Internal Server Error`: CRUD service error
+- `500 Internal Server Error`: Core API error
 
 #### DELETE Entity
 
@@ -242,7 +227,7 @@ DELETE /entities/entity123
 
 ### JSON to Protobuf Conversion
 
-The Update API performs complex conversion between JSON and Protobuf formats:
+The Ingestion API performs complex conversion between JSON and Protobuf formats:
 
 **Key Conversions**:
 
@@ -301,7 +286,7 @@ foreach var rel in relationships {
 **Connection Setup**:
 ```ballerina
 final grpc:Client crudClient = check new (
-    string `${CRUD_SERVICE_URL}`,
+    string `${CORE_SERVICE_URL}`,
     {
         timeout: 30,  // 30 second timeout
         retryConfiguration: {
@@ -315,10 +300,10 @@ final grpc:Client crudClient = check new (
 
 **Environment Variables**:
 ```bash
-CRUD_SERVICE_HOST=localhost
-CRUD_SERVICE_PORT=50051
-UPDATE_SERVICE_HOST=0.0.0.0
-UPDATE_SERVICE_PORT=8080
+CORE_SERVICE_HOST=localhost
+CORE_SERVICE_PORT=50051
+INGESTION_SERVICE_HOST=0.0.0.0
+INGESTION_SERVICE_PORT=8080
 ```
 
 ### Error Handling
@@ -356,42 +341,42 @@ UPDATE_SERVICE_PORT=8080
 
 **Running Tests**:
 ```bash
-cd nexoan/update-api
+cd opengin/ingestion-api
 bal test
 ```
 
 ---
 
-## Query API
+## Read API
 
 ### Overview
 
-**Location**: `nexoan/query-api/`  
+**Location**: `opengin/read-api/`  
 **Language**: Ballerina  
 **Protocol**: HTTP/REST + JSON  
 **Port**: 8081  
-**Contract**: `nexoan/contracts/rest/query_api.yaml`
+**Contract**: `opengin/contracts/rest/read_api.yaml`
 
 ### Directory Structure
 
 ```
-nexoan/query-api/
-├── query_api_service.bal        # Main service implementation
+opengin/read-api/
+├── read_api_service.bal        # Main service implementation
 ├── types_v1_pb.bal               # Generated protobuf types for Ballerina
 ├── types.bal                     # Type definitions
 ├── Ballerina.toml                # Package configuration
 ├── Dependencies.toml             # Dependency versions
 ├── env.template                  # Environment variable template
 ├── tests/
-│   └── query_api_service_test.bal  # Service tests
+│   └── read_api_service_test.bal  # Service tests
 └── target/                       # Build outputs
 ```
 
 ### Service Implementation
 
-**File**: `query_api_service.bal`
+**File**: `read_api_service.bal`
 
-The Query API provides specialized endpoints for retrieving entity data:
+The Read API provides specialized endpoints for retrieving entity data:
 
 ```ballerina
 service /v1/entities on new http:Listener(8081) {
@@ -558,7 +543,7 @@ GET /v1/entities/entity123?output=metadata,relationships
 
 ### Temporal Queries
 
-The Query API supports temporal queries using the `activeAt` parameter:
+The Read API supports temporal queries using the `activeAt` parameter:
 
 **Example**: Get employee's salary on specific date
 ```bash
@@ -578,7 +563,7 @@ This returns only the attribute value that was active on March 15, 2024.
 **Connection Setup**:
 ```ballerina
 final grpc:Client crudClient = check new (
-    string `${CRUD_SERVICE_URL}`,
+    string `${CORE_SERVICE_URL}`,
     {
         timeout: 30,
         retryConfiguration: {
@@ -592,10 +577,10 @@ final grpc:Client crudClient = check new (
 
 **Environment Variables**:
 ```bash
-CRUD_SERVICE_HOST=localhost
-CRUD_SERVICE_PORT=50051
-QUERY_SERVICE_HOST=0.0.0.0
-QUERY_SERVICE_PORT=8081
+CORE_SERVICE_HOST=localhost
+CORE_SERVICE_PORT=50051
+READ_SERVICE_HOST=0.0.0.0
+READ_SERVICE_PORT=8081
 ```
 
 ### Performance Optimization
@@ -619,7 +604,7 @@ Instead of:
 
 ### Testing
 
-**Test File**: `tests/query_api_service_test.bal`
+**Test File**: `tests/read_api_service_test.bal`
 
 **Test Coverage**:
 - Get metadata
@@ -630,7 +615,7 @@ Instead of:
 
 **Running Tests**:
 ```bash
-cd nexoan/query-api
+cd opengin/read-api
 bal test
 ```
 
@@ -638,9 +623,9 @@ bal test
 
 ## OpenAPI Contracts
 
-### Update API Contract
+### Ingestion API Contract
 
-**File**: `nexoan/contracts/rest/update_api.yaml`
+**File**: `opengin/contracts/rest/update_api.yaml`
 
 Defines:
 - Entity schema
@@ -651,12 +636,12 @@ Defines:
 
 **Code Generation**:
 ```bash
-bal openapi -i ../contracts/rest/update_api.yaml --mode service
+bal openapi -i ../contracts/rest/ingestion_api.yaml --mode service
 ```
 
-### Query API Contract
+### Read API Contract
 
-**File**: `nexoan/contracts/rest/query_api.yaml`
+**File**: `opengin/contracts/rest/read_api.yaml`
 
 Defines:
 - Query parameters
@@ -666,7 +651,7 @@ Defines:
 
 **Code Generation**:
 ```bash
-bal openapi -i ../contracts/rest/query_api.yaml --mode service
+bal openapi -i ../contracts/rest/read_api.yaml --mode service
 ```
 
 ---
@@ -675,7 +660,7 @@ bal openapi -i ../contracts/rest/query_api.yaml --mode service
 
 ### Overview
 
-**Location**: `nexoan/swagger-ui/`  
+**Location**: `opengin/swagger-ui/`  
 **Purpose**: Interactive API documentation
 
 ### Features
@@ -689,7 +674,7 @@ bal openapi -i ../contracts/rest/query_api.yaml --mode service
 
 ```bash
 # Start Swagger UI
-cd nexoan/swagger-ui
+cd opengin/swagger-ui
 python3 serve.py
 
 # Open browser
@@ -699,66 +684,8 @@ http://localhost:8082
 ### Configuration
 
 The Swagger UI serves the OpenAPI specifications from:
-- `nexoan/contracts/rest/update_api.yaml`
-- `nexoan/contracts/rest/query_api.yaml`
-
----
-
-## Common Patterns
-
-### 1. Request Validation
-
-Both APIs validate incoming requests:
-```ballerina
-// Validate required fields
-if (payload.id is ()) {
-    return error("Entity ID is required");
-}
-
-if (payload.kind is () || payload.kind.major is ()) {
-    return error("Entity kind.major is required");
-}
-```
-
-### 2. Error Response Formatting
-
-Consistent error response structure:
-```ballerina
-function handleError(error err) returns http:InternalServerError {
-    return {
-        body: {
-            error: {
-                message: err.message(),
-                details: err.detail()
-            }
-        }
-    };
-}
-```
-
-### 3. gRPC Communication
-
-Standard pattern for calling CRUD service:
-```ballerina
-// Create gRPC request
-ReadEntityRequest request = {
-    entity: {
-        id: entityId,
-        kind: {},
-        // ... minimal entity
-    },
-    output: ["metadata", "relationships"]
-};
-
-// Call CRUD service
-Entity|grpc:Error result = crudClient->ReadEntity(request);
-
-// Handle response
-if (result is grpc:Error) {
-    return handleGrpcError(result);
-}
-return convertToJson(result);
-```
+- `opengin/contracts/rest/ingestion_api.yaml`
+- `opengin/contracts/rest/read_api.yaml`
 
 ---
 
@@ -815,7 +742,7 @@ Both APIs log:
 ### Tracing (Planned)
 
 - Distributed tracing with OpenTelemetry
-- Trace request flow: Client → API → CRUD → Database
+- Trace request flow: Client → API → Core → Database
 - Identify bottlenecks
 
 ---
@@ -868,10 +795,8 @@ GET /v1/entities/entity123/attributes?name=salary&activeAt=2024-03-15T00:00:00Z
 ## Related Documentation
 
 - [Main Architecture Overview](./overview.md)
-- [CRUD Service Details](./crud-service-details.md)
-- [Architecture Diagrams](./diagrams.md)
-- [Update API README](../../nexoan/update-api/README.md)
-- [Query API README](../../nexoan/query-api/README.md)
+- [Ingestion API](../../opengin/ingestion-api/README.md)
+- [Read API](../../opengin/read-api/README.md)
 
 ---
 

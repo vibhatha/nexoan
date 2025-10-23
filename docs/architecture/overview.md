@@ -2,7 +2,7 @@
 
 ## System Overview
 
-**OpenGIN** is a multi-database, microservices-based data management system that handles entities with metadata, attributes, and relationships. The architecture follows a layered approach with REST/gRPC communication protocols.
+**OpenGIN** is a data orchestration and networking framework. It is based on a polyglot database and a microservices-based design that handles entities with metadata, attributes, and relationships. The architecture follows a layered approach with REST/gRPC communication protocols.
 
 ---
 
@@ -18,7 +18,7 @@
 ┌──────────────────────────┴─────────────────────────────────────┐
 │                        API LAYER                               │
 │  ┌─────────────────────┐        ┌──────────────────────┐       │
-│  │   Update API        │        │    Query API         │       │
+│  │   Ingestion API     │        │    Read API          │       │
 │  │   (Ballerina)       │        │    (Ballerina)       │       │
 │  │   Port: 8080        │        │    Port: 8081        │       │
 │  │   - CREATE          │        │    - READ/QUERY      │       │
@@ -30,10 +30,10 @@
              │        gRPC + Protobuf        │
              │                               │
 ┌────────────┴───────────────────────────────┴───────────────────┐
-│                    SERVICE LAYER                               │
+│                    Core LAYER                                  │
 │                                                                │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │              CRUD Service (Go)                           │  │
+│  │              Core API (Go)                               │  │
 │  │              Port: 50051 (gRPC)                          │  │
 │  │                                                          │  │
 │  │  Components:                                             │  │
@@ -86,41 +86,41 @@
 
 ### 1. API Layer (Client-Facing Services)
 
-#### Update API (Ballerina, Port 8080)
+#### Ingestion API (Ballerina, Port 8080)
 - **Purpose**: Handle entity mutations (CREATE, UPDATE, DELETE)
 - **Technology**: Ballerina REST service
-- **Location**: `nexoan/update-api/`
+- **Location**: `opengin/ingestion-api/`
 - **Responsibilities**:
   - Accept JSON payloads from clients
   - Validate request structure
   - Convert JSON to Protobuf Entity messages
   - Communicate with CRUD Service via gRPC
   - Convert Protobuf responses back to JSON
-- **Contract**: OpenAPI specification at `nexoan/contracts/rest/update_api.yaml`
+- **Contract**: OpenAPI specification at `opengin/contracts/rest/ingestion_api.yaml`
 
-#### Query API (Ballerina, Port 8081)
+#### Read API (Ballerina, Port 8081)
 - **Purpose**: Handle entity queries and retrieval
 - **Technology**: Ballerina REST service
-- **Location**: `nexoan/query-api/`
+- **Location**: `opengin/read-api/`
 - **Responsibilities**:
   - Accept query requests from clients
   - Support selective field retrieval (metadata, relationships, attributes)
   - Filter and search capabilities
   - Communicate with CRUD Service via gRPC
   - Return formatted JSON responses
-- **Contract**: OpenAPI specification at `nexoan/contracts/rest/query_api.yaml`
+- **Contract**: OpenAPI specification at `opengin/contracts/rest/read_api.yaml`
 
 #### Swagger UI
 - **Purpose**: Interactive API documentation
-- **Location**: `nexoan/swagger-ui/`
-- **Serves**: OpenAPI specifications for Update and Query APIs
+- **Location**: `opengin/swagger-ui/`
+- **Serves**: OpenAPI specifications for Ingestion and Read APIs
 
-### 2. Service Layer (Business Logic)
+### 2. Service Layer
 
-#### CRUD Service (Go, gRPC, Port 50051)
-Central orchestration service that manages all database interactions.
+#### Core API (Go, gRPC, Port 50051)
+Central orchestration service that manages data networking and all database interactions.
 
-**Location**: `nexoan/crud-api/`
+**Location**: `opengin/core-api/`
 
 **Core Components**:
 
@@ -150,7 +150,7 @@ Central orchestration service that manages all database interactions.
      - Processes entity attributes
      - Determines storage strategy
      - Handles time-based attribute values
-     - Manages attribute schema evolution
+     - Manages attribute schema evolution (partial support)
    
    - **GraphMetadataManager** (`graph_metadata_manager.go`)
      - Manages graph metadata
@@ -281,7 +281,16 @@ The entity data is strategically distributed across three databases:
   "name": "John Doe",
   "created": "2024-01-01T00:00:00Z",
   "metadata": {"department": "Engineering", "role": "Engineer"},
-  "attributes": {"salary": [{"startTime": "2024-01", "value": 100000}]},
+  "attributes": {
+    "expenses": {
+      "columns": ["type", "amount", "date", "category"],
+      "rows": [
+        ["Travel", 500, "2024-01-15", "Business"],
+        ["Meals", 120, "2024-01-16", "Entertainment"],
+        ["Equipment", 300, "2024-01-17", "Office"]
+      ]
+    }
+  },
   "relationships": {"reports_to": "manager123"}
 }
 ```
@@ -327,17 +336,22 @@ The entity data is strategically distributed across three databases:
 │ PostgreSQL - Attribute Storage                               │
 │ ┌──────────────────────────────────────────────────────────┐ │
 │ │ Table: attribute_schemas                                 │ │
-│ │   {kind_major: "Person", attr_name: "salary",            │ │
-│ │    data_type: "int", storage_type: "scalar"}             │ │
+│ │   {kind_major: "Person", attr_name: "expenses",          │ │
+│ │    data_type: "table", storage_type: "tabular"}          │ │
 │ │                                                          │ │
 │ │ Table: entity_attributes                                 │ │
-│ │   {entity_id: "entity123", attr_name: "salary"}          │ │
+│ │   {entity_id: "entity123", attr_name: "expenses"}        │ │
 │ │                                                          │ │
-│ │ Table: attr_Person_salary                                │ │
-│ │   {entity_id: "entity123",                               │ │
-│ │    start_time: "2024-01",                                │ │
-│ │    end_time: NULL,                                       │ │
-│ │    value: 100000}                                        │ │
+│ │ Table: attr_expenses                                     │ │
+│ │   {row_id: 1,                                            │ │
+│ │    type: "Travel", amount: 500,                          │ │
+│ │    date: "2024-01-15", category: "Business"}             │ │
+│ │   {row_id: 2,                                            │ │
+│ │    type: "Meals", amount: 120,                           │ │
+│ │    date: "2024-01-16", category: "Entertainment"}        │ │
+│ │   {row_id: 3,                                            │ │
+│ │    type: "Equipment", amount: 300,                       │ │
+│ │    date: "2024-01-17", category: "Office"}               │ │
 │ └──────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -349,9 +363,9 @@ The entity data is strategically distributed across three databases:
 ### Create Entity Flow
 
 ```
-┌────────┐         ┌────────────┐         ┌──────────────┐         ┌──────────┐
-│ Client │         │ Update API │         │ CRUD Service │         │ Databases│
-└───┬────┘         └─────┬──────┘         └──────┬───────┘         └────┬─────┘
+┌────────┐         ┌───────────────┐      ┌──────────────┐         ┌──────────┐
+│ Client │         │ Ingestion API │      │ Core API     │         │ Databases│
+└───┬────┘         └─────┬─────────┘      └──────┬───────┘         └────┬─────┘
     │                    │                       │                      │
     │ POST /entities     │                       │                      │
     │ (JSON payload)     │                       │                      │
@@ -395,7 +409,7 @@ The entity data is strategically distributed across three databases:
 
 ```
 ┌────────┐         ┌───────────┐          ┌──────────────┐         ┌──────────┐
-│ Client │         │ Query API │          │ CRUD Service │         │ Databases│
+│ Client │         │ Read API  │          │ Core API     │         │ Databases│
 └───┬────┘         └─────┬─────┘          └──────┬───────┘         └────┬─────┘
     │                    │                       │                      │
     │ GET /entities/123  │                       │                      │
@@ -418,6 +432,10 @@ The entity data is strategically distributed across three databases:
     │                    │                       ├─────────────────────>│
     │                    │                       │  (Neo4j - if req'd)  │
     │                    │                       │                      │
+    │                    │                       │ Get attributes       │
+    │                    │                       ├─────────────────────>│
+    │                    │                       │ (PostgreSQL -        │
+    │                    │                       │             if req'd)│
     │                    │                       │ Assemble entity      │
     │                    │                       │                      │
     │                    │    Entity (Protobuf)  │                      │
@@ -438,7 +456,7 @@ The entity data is strategically distributed across three databases:
 
 ### Type Inference System
 
-**Location**: `nexoan/crud-api/pkg/typeinference/`
+**Location**: `opengin/crud-api/pkg/typeinference/`
 
 **Primitive Types:**
 - `int` - Whole numbers without decimal points
@@ -462,7 +480,7 @@ The entity data is strategically distributed across three databases:
 
 ### Storage Type Inference
 
-**Location**: `nexoan/crud-api/pkg/storageinference/`
+**Location**: `opengin/core-api/pkg/storageinference/`
 
 **Storage Types:**
 1. **Tabular** - Has `columns` and `rows` fields
@@ -496,19 +514,18 @@ The entity data is strategically distributed across three databases:
 
 | Layer | Protocol | Format | Port |
 |-------|----------|--------|------|
-| Client ↔ Update API | HTTP/REST | JSON | 8080 |
-| Client ↔ Query API | HTTP/REST | JSON | 8081 |
-| APIs ↔ CRUD Service | gRPC | Protobuf | 50051 |
-| CRUD ↔ MongoDB | MongoDB Wire Protocol | BSON | 27017 |
-| CRUD ↔ Neo4j | Bolt Protocol | Cypher | 7687 |
-| CRUD ↔ PostgreSQL | PostgreSQL Wire Protocol | SQL | 5432 |
+| Client ↔ Ingestion API | HTTP/REST | JSON | 8080 |
+| Client ↔ Read API | HTTP/REST | JSON | 8081 |
+| APIs ↔ Core API | gRPC | Protobuf | 50051 |
+| Core API ↔ MongoDB | MongoDB Wire Protocol | BSON | 27017 |
+| Core API ↔ Neo4j | Bolt Protocol | Cypher | 7687 |
+| Core API ↔ PostgreSQL | PostgreSQL Wire Protocol | SQL | 5432 |
 
 ---
 
 ## Network Architecture
 
 **Docker Network**: `ldf-network` (bridge network)
-
 All services run within the same Docker network:
 - Container-based service discovery
 - Internal communication via container names
@@ -516,9 +533,9 @@ All services run within the same Docker network:
 - Volume persistence for data storage
 
 **Exposed Ports:**
-- `8080` - Update API (external access)
-- `8081` - Query API (external access)
-- `50051` - CRUD Service (can be internal only)
+- `8080` - Ingestion API (external access)
+- `8081` - Read API (external access)
+- `50051` - Core API (can be internal only)
 - `27017` - MongoDB (development access)
 - `7474/7687` - Neo4j (development access)
 - `5432` - PostgreSQL (development access)
@@ -534,21 +551,24 @@ All services run within the same Docker network:
 - **Volumes**: Persistent storage for all databases
 
 ### Health Checks
+
 All services include health check configurations:
 - MongoDB: `mongo --eval "db.adminCommand('ping')"`
 - Neo4j: HTTP endpoint check on port 7474
 - PostgreSQL: `pg_isready`
-- CRUD Service: TCP check on port 50051
-- Update/Query APIs: TCP checks on respective ports
+- Core API: TCP check on port 50051
+- Ingestion/Read APIs: TCP checks on respective ports
 
 ### Dependency Management
+
 Services start in proper order using Docker Compose `depends_on`:
+
 ```
 Databases (MongoDB, Neo4j, PostgreSQL)
   ↓
-CRUD Service (waits for all databases to be healthy)
+Core API (waits for all databases to be healthy)
   ↓
-Update & Query APIs (wait for CRUD Service to be healthy)
+Ingestion & Read APIs (wait for Core API to be healthy)
 ```
 
 ### Docker Compose Profiles
@@ -561,9 +581,9 @@ Update & Query APIs (wait for CRUD Service to be healthy)
 
 | Component | Technology | Language | Purpose |
 |-----------|-----------|----------|---------|
-| Update API | Ballerina | Ballerina | REST API for mutations |
-| Query API | Ballerina | Ballerina | REST API for queries |
-| CRUD Service | Go + gRPC | Go | Business logic orchestration |
+| Ingestion API | Ballerina | Ballerina | REST API for mutations |
+| Read API | Ballerina | Ballerina | REST API for queries |
+| Core API | Go + gRPC | Go | Business logic orchestration |
 | MongoDB | MongoDB 5.0+ | - | Metadata storage |
 | Neo4j | Neo4j 5.x | - | Graph storage |
 | PostgreSQL | PostgreSQL 14+ | - | Attribute storage |
@@ -575,7 +595,7 @@ Update & Query APIs (wait for CRUD Service to be healthy)
 
 ## Key Features
 
-### 1. Multi-Database Strategy
+### 1. Polyglot Database Strategy
 - **Optimized Storage**: Each database serves its best use case
 - **Data Separation**: Clear boundaries between metadata, entities, and attributes
 - **Scalability**: Independent scaling of each database
@@ -590,7 +610,7 @@ Update & Query APIs (wait for CRUD Service to be healthy)
 - **Rich Type System**: Supports primitives and special types
 - **Storage Optimization**: Determines optimal storage based on data structure
 
-### 4. Schema Evolution
+### 4. Schema Evolution (Not Fully Supported)
 - **Dynamic Schemas**: PostgreSQL tables created on-demand
 - **Attribute Flexibility**: New attributes don't require migrations
 - **Kind-Based Organization**: Attributes organized by entity kind
@@ -601,7 +621,7 @@ Update & Query APIs (wait for CRUD Service to be healthy)
 - **Relationship Properties**: Rich metadata on relationships
 
 ### 6. Backup & Restore
-- **Multi-Database Backup**: Coordinated backups across all databases
+- **Polyglot Database Backup**: Coordinated backups across all databases
 - **Version Management**: GitHub-based version control
 - **One-Command Restore**: Simple restoration from any version
 
@@ -660,6 +680,7 @@ Based on TODOs found in the codebase:
 6. **GraphQL API** - Alternative query interface
 7. **Event Streaming** - Kafka integration for event-driven architecture
 8. **Observability** - Distributed tracing and metrics
+9. **Advanced Querying** - Join, Aggregation, filters across the polyglot database
 
 ---
 
@@ -669,7 +690,7 @@ Based on TODOs found in the codebase:
 - [Data Types](../datatype.md) - Type inference system details
 - [Storage Types](../storage.md) - Storage type inference details
 - [Backup Integration](../deployment/BACKUP_INTEGRATION.md) - Backup and restore guide
-- [Core API](../../nexoan/crud-api/README.md) - Core API documentation
+- [Core API](../architecture/core-api.md) - Core API documentation
 - [Ingestion API](../../nexoan/update-api/README.md) - Ingestion API documentation
 - [Read API](../../nexoan/query-api/README.md) - Read API documentation
 
@@ -696,14 +717,14 @@ GET    http://localhost:8081/v1/entities/{id}/attributes     # Get attributes
 
 ```bash
 # MongoDB
-mongodb://admin:admin123@localhost:27017/nexoan?authSource=admin
+mongodb://admin:admin123@localhost:27017/opengin?authSource=admin
 
 # Neo4j
 bolt://neo4j:neo4j123@localhost:7687
 http://localhost:7474
 
 # PostgreSQL
-postgresql://postgres:postgres@localhost:5432/nexoan
+postgresql://postgres:postgres@localhost:5432/opengin
 ```
 
 ### Docker Commands
@@ -729,5 +750,5 @@ docker-compose build
 
 **Document Version**: 1.0  
 **Last Updated**: October 2024  
-**Maintained By**: Nexoan Development Team
+**Maintained By**: OpenGIN Development Team
 
