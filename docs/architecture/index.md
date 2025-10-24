@@ -75,25 +75,27 @@ Detailed database schema documentation:
 
 **I'm working on APIs** → Read [API Layer Details](./api-layer-details.md)
 
-**I'm working on backend** → Read [CRUD Service Details](./crud-service-details.md)
+**I'm working on backend** → Read [Core API](./core-api.md) + [Read API](./read-api.md) + [Ingestion API](./ingestion-api.md)
 
 **I'm working on databases** → Read [Database Schemas](./database-schemas.md)
 
-**I'm presenting the architecture** → Use [Diagrams](./diagrams.md) and [Overview](./overview.md)
-
 ### By Task
 
-**Understanding data flow** → [Overview](./overview.md) + [Diagrams](./diagrams.md)
+**Understanding data flow** → [Overview](./overview.md)
 
 **Adding new endpoint** → [API Layer Details](./api-layer-details.md)
 
-**Adding new entity type** → [Database Schemas](./database-schemas.md) + [CRUD Service Details](./crud-service-details.md)
+**Adding new entity type** → [Database Schemas](./database-schemas.md) + [Core API Details](./core-api.md)
+
+**I'm working on querying data** → Read [Read API](./read-api.md)
+
+**I'm working on inserting data** → Read [Ingestion API](./ingestion-api.md)
 
 **Debugging data storage** → [Database Schemas](./database-schemas.md)
 
-**Performance tuning** → [CRUD Service Details](./crud-service-details.md) + [Database Schemas](./database-schemas.md)
+**Performance tuning** → [Core API Details](./core-api.md) + [Database Schemas](./database-schemas.md)
 
-**Understanding types** → [Overview](./overview.md) + [CRUD Service Details](./crud-service-details.md)
+**Understanding types** → [Overview](./overview.md) + [Core API](./core-api.md)
 
 ---
 
@@ -259,6 +261,12 @@ Returns attribute value as it was on specific date.
 2. Add tests
 3. Update [Core API Details](./crud-service-details.md)
 
+**Adding new API endpoints for Read/Ingestion**:
+1. Update OpenAPI contract in `nexoan/contracts/rest/`
+2. Regenerate service code
+3. Implement endpoint logic
+4. Update [Ingestion API Details](./ingestion-api.md) or [Read API Details](./read-api.md)
+
 **Modifying database schema**:
 1. Consider impact across all databases
 2. Update schema migration scripts
@@ -362,9 +370,9 @@ Update architecture docs when:
 - [Data Types](../datatype.md) - Type inference system
 - [Storage Types](../storage.md) - Storage inference system
 - [Deployment Guide](../deployment/BACKUP_INTEGRATION.md) - Backup and restore
-- [Core API README](../../nexoan/crud-api/README.md) - Polyglot Database Query Processing
-- [Ingestion API README](../../nexoan/update-api/README.md) - Ingestion API setup
-- [Read API README](../../nexoan/query-api/README.md) - Read API setup
+- [Core API README](../architecture/core-api.md) - Polyglot Database Query Processing
+- [Ingestion API README](../architecture/ingestion-api.md) - Ingestion API setup
+- [Read API README](../architecture/read-api.md) - Read API setup
 
 ### External Resources
 
@@ -399,4 +407,3 @@ For questions about the architecture:
 **Last Updated**: October 2024  
 **Documentation Status**: ✅ Complete and Current  
 **Maintained By**: OpenGIN Development Team
-
