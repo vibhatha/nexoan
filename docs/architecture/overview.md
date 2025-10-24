@@ -124,111 +124,54 @@ Central orchestration service that manages data networking and all database inte
 
 **Core Components**:
 
-1. **gRPC Server** (`cmd/server/service.go`)
-   - `CreateEntity(ctx, *pb.Entity) (*pb.Entity, error)`
-     - Orchestrates entity creation across all databases
-     - Saves metadata to MongoDB
-     - Creates entity node in Neo4j
-     - Handles relationships in Neo4j
-     - Processes attributes for PostgreSQL
-   
-   - `ReadEntity(ctx, *pb.ReadEntityRequest) (*pb.Entity, error)`
-     - Retrieves entity information from multiple databases
-     - Supports selective field retrieval via output parameter
-     - Assembles complete entity from distributed storage
-   
-   - `UpdateEntity(ctx, *pb.UpdateEntityRequest) (*pb.Entity, error)`
-     - Updates entity information across databases
-     - Handles partial updates
-   
-   - `DeleteEntity(ctx, *pb.EntityId) (*pb.Empty, error)`
-     - Removes entity from all databases
-     - Cascades deletion across MongoDB, Neo4j, and PostgreSQL
+1. **gRPC Server**
+   - Orchestrates entity operations across all three databases (MongoDB, Neo4j, PostgreSQL)
+   - Handles metadata storage in MongoDB, entity nodes and relationships in Neo4j, and attributes in PostgreSQL
+   - Supports selective field retrieval and distributed data assembly
+   - Manages temporal data with start/end time support
+   - Provides atomic operations with cross-database consistency
 
-2. **Engine Layer** (`engine/`)
-   - **AttributeProcessor** (`attribute_resolver.go`)
-     - Processes entity attributes
-     - Determines storage strategy
-     - Handles time-based attribute values
-     - Manages attribute schema evolution (partial support)
-   
-   - **GraphMetadataManager** (`graph_metadata_manager.go`)
-     - Manages graph metadata
-     - Handles relationship metadata
-   
-   - **Type Inference** (`pkg/typeinference/inference.go`)
-     - Automatically detects data types
-     - Supports: int, float, string, bool, null
-     - Special types: date, time, datetime
-   
-   - **Storage Inference** (`pkg/storageinference/inference.go`)
-     - Determines optimal storage type
-     - Types: tabular, graph, list, map, scalar
+2. **Engine Layer**
+   - Processes entity attributes and determines optimal storage strategies
+   - Automatically infers data types (int, float, string, bool, date, time, datetime)
+   - Determines storage types (tabular, graph, list, map, scalar) based on data structure
+   - Manages graph metadata and relationship processing
+   - Handles temporal data with time-based attribute values
 
-3. **Repository Layer** (`db/repository/`)
-   - **MongoRepository** (`mongo/mongodb_client.go`, `mongo/metadata_handler.go`)
-     - Handles metadata storage and retrieval
-     - Connection management
-     - CRUD operations for metadata
-   
-   - **Neo4jRepository** (`neo4j/neo4j_client.go`, `neo4j/graph_entity_handler.go`)
-     - Manages entity nodes and relationships
-     - Graph traversal operations
-     - Cypher query execution
-   
-   - **PostgresRepository** (`postgres/postgres_client.go`, `postgres/data_handler.go`)
-     - Handles attribute storage
-     - Schema management
-     - Time-series data operations
+3. **Repository Layer**
+   - Manages metadata storage and retrieval in MongoDB with flexible document structures
+   - Handles entity nodes and relationships in Neo4j with graph traversal and Cypher queries
+   - Processes attribute storage in PostgreSQL with dynamic schema management and time-series support
+   - Provides connection management and CRUD operations across all three databases
 
 ### 3. Database Layer
 
 #### MongoDB (Port 27017)
-- **Purpose**: Flexible metadata storage
-- **Collections**: 
-  - `metadata` - Production metadata
-  - `metadata_test` - Test metadata
-- **Data Model**: Document-based key-value pairs
-- **Why MongoDB**: Schema-less structure ideal for dynamic metadata
-- **Location**: `deployment/development/docker/mongodb/`
+- Provides flexible metadata storage with schema-less document structure
+- Stores key-value pairs in `metadata` and `metadata_test` collections
+- Ideal for dynamic metadata that doesn't require fixed schema
 
 #### Neo4j (Port 7474 HTTP, 7687 Bolt)
-- **Purpose**: Entity and relationship storage
-- **Data Model**: 
-  - **Nodes**: Entities with properties (id, kind_major, kind_minor, name, created, terminated)
-  - **Relationships**: Directed edges with properties (id, name, startTime, endTime)
-- **Why Neo4j**: Optimized for graph traversal and relationship queries
-- **Location**: `deployment/development/docker/neo4j/`
+- Stores entities as nodes and relationships as directed edges with temporal properties
+- Optimized for graph traversal and complex relationship queries
+- Handles entity connections with time-based relationship tracking
 
 #### PostgreSQL (Port 5432)
-- **Purpose**: Time-based attribute storage
-- **Schema**:
-  - `attribute_schemas` - Attribute type definitions
-  - `entity_attributes` - Entity-to-attribute mappings
-  - `attr_*` - Dynamic tables for each attribute type
-- **Why PostgreSQL**: ACID compliance, complex queries, time-series support
-- **Location**: `deployment/development/docker/postgres/`
+- Manages time-based attribute storage with dynamic schema creation
+- Provides ACID compliance and complex querying for time-series data
+- Uses dynamic tables for each attribute type with entity-attribute mappings
 
 ### 4. Supporting Services
 
 #### Cleanup Service
-- **Purpose**: Database cleanup for testing and maintenance
-- **Technology**: Python
-- **Trigger**: Docker Compose profile (`--profile cleanup`)
-- **Operations**:
-  - Clears PostgreSQL tables
-  - Drops MongoDB collections
-  - Removes Neo4j nodes and relationships
-- **Usage**: `docker-compose --profile cleanup run --rm cleanup /app/cleanup.sh pre`
+- Provides database cleanup for testing and maintenance across all three databases
+- Triggered via Docker Compose profile for automated environment reset
+- Clears PostgreSQL tables, MongoDB collections, and Neo4j nodes/relationships
 
 #### Backup/Restore Service
-- **Purpose**: Data persistence and version management
-- **Operations**:
-  - Local backup creation for all databases
-  - GitHub-based backup storage with versioning
-  - Automated restore from GitHub releases
-- **Scripts**: `deployment/development/init.sh`
-- **Documentation**: See `docs/deployment/BACKUP_INTEGRATION.md`
+- Manages data persistence and version control across all databases
+- Provides local backup creation and GitHub-based storage with versioning
+- Enables automated restore from GitHub releases for environment setup
 
 ---
 
@@ -283,12 +226,16 @@ The entity data is strategically distributed across three databases:
   "metadata": {"department": "Engineering", "role": "Engineer"},
   "attributes": {
     "expenses": {
-      "columns": ["type", "amount", "date", "category"],
-      "rows": [
-        ["Travel", 500, "2024-01-15", "Business"],
-        ["Meals", 120, "2024-01-16", "Entertainment"],
-        ["Equipment", 300, "2024-01-17", "Office"]
-      ]
+      "startTime": "2024-01-15T00:00:00Z",
+      "endTime": "2024-01-17T23:59:59Z",
+      "value": {
+        "columns": ["type", "amount", "date", "category"],
+        "rows": [
+          ["Travel", 500, "2024-01-15", "Business"],
+          ["Meals", 120, "2024-01-16", "Entertainment"],
+          ["Equipment", 300, "2024-01-17", "Office"]
+        ]
+      }
     }
   },
   "relationships": {"reports_to": "manager123"}
@@ -554,11 +501,8 @@ All services run within the same Docker network:
 ### Health Checks
 
 All services include health check configurations:
-- MongoDB: `mongo --eval "db.adminCommand('ping')"`
-- Neo4j: HTTP endpoint check on port 7474
-- PostgreSQL: `pg_isready`
-- Core API: TCP check on port 50051
-- Ingestion/Read APIs: TCP checks on respective ports
+- **Database Health**: MongoDB ping, Neo4j HTTP check, PostgreSQL readiness
+- **API Health**: Core API and Ingestion/Read APIs via TCP port checks
 
 ### Dependency Management
 
@@ -611,7 +555,7 @@ Ingestion & Read APIs (wait for Core API to be healthy)
 - **Rich Type System**: Supports primitives and special types
 - **Storage Optimization**: Determines optimal storage based on data structure
 
-### 4. Schema Evolution (Not Fully Supported)
+### 4. Schema Evolution (Not Supported Yet)
 - **Dynamic Schemas**: PostgreSQL tables created on-demand
 - **Attribute Flexibility**: New attributes don't require migrations
 - **Kind-Based Organization**: Attributes organized by entity kind
