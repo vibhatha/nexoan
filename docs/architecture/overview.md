@@ -107,8 +107,6 @@
 #### Core API (Go, gRPC, Port 50051)
 Central orchestration service that manages data networking and all database interactions.
 
-**Location**: `opengin/core-api/`
-
 **Core Components**:
 
 1. **gRPC Server**
@@ -391,8 +389,6 @@ The entity data is strategically distributed across three databases:
 
 ### Type Inference System
 
-**Location**: `opengin/crud-api/pkg/typeinference/`
-
 **Primitive Types:**
 - `int` - Whole numbers without decimal points
 - `float` - Numbers with decimals or scientific notation
@@ -414,8 +410,6 @@ The entity data is strategically distributed across three databases:
 6. Everything else → `string`
 
 ### Storage Type Inference
-
-**Location**: `opengin/core-api/pkg/storageinference/`
 
 **Storage Types:**
 1. **Tabular** - Has `columns` and `rows` fields
