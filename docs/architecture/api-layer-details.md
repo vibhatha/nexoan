@@ -18,46 +18,11 @@ Both APIs act as translation layers between external HTTP/JSON clients and the i
 
 ### Overview
 
-**Location**: `opengin/ingestion-api/`  
-**Language**: Ballerina  
-**Protocol**: HTTP/REST + JSON  
-**Port**: 8080  
-**Contract**: `opengin/contracts/rest/ingestion_api.yaml`
+The Ingestion API is a Ballerina REST service that handles entity mutations (CREATE, UPDATE, DELETE) using HTTP/REST + JSON protocol with an OpenAPI contract for client integration.
 
 ### Service Implementation
 
-**File**: `ingestion_api_service.bal`
-
-The service exposes REST endpoints following OpenAPI specification:
-
-```ballerina
-service /entities on new http:Listener(8080) {
-    
-    // CREATE: POST /entities
-    resource function post .(@http:Payload json payload) 
-        returns json|error {
-        // Implementation
-    }
-    
-    // READ: GET /entities/{id}
-    resource function get [string id]() 
-        returns json|error {
-        // Implementation
-    }
-    
-    // UPDATE: PUT /entities/{id}
-    resource function put [string id](@http:Payload json payload) 
-        returns json|error {
-        // Implementation
-    }
-    
-    // DELETE: DELETE /entities/{id}
-    resource function delete [string id]() 
-        returns http:Ok|error {
-        // Implementation
-    }
-}
-```
+The service exposes REST endpoints following OpenAPI specification with four main operations: POST /entities for creating entities, GET /entities/{id} for reading entities, PUT /entities/{id} for updating entities, and DELETE /entities/{id} for deleting entities. All endpoints accept JSON payloads and return JSON responses or errors.
 
 ### Request/Response Flow
 
@@ -130,12 +95,6 @@ Content-Type: application/json
 }
 ```
 
-**Status Codes**:
-- `201 Created`: Entity successfully created
-- `400 Bad Request`: Invalid JSON or missing required fields
-- `409 Conflict`: Entity with ID already exists
-- `500 Internal Server Error`: CRUD service error
-
 #### READ Entity
 
 **Request**:
@@ -163,11 +122,6 @@ GET /entities/entity123
   "relationships": []
 }
 ```
-
-**Status Codes**:
-- `200 OK`: Entity found and returned
-- `404 Not Found`: Entity doesn't exist
-- `500 Internal Server Error`: CRUD service error
 
 #### UPDATE Entity
 
@@ -202,12 +156,6 @@ Content-Type: application/json
 }
 ```
 
-**Status Codes**:
-- `200 OK`: Entity successfully updated
-- `404 Not Found`: Entity doesn't exist
-- `400 Bad Request`: Invalid update data
-- `500 Internal Server Error`: Core API error
-
 #### DELETE Entity
 
 **Request**:
@@ -220,99 +168,28 @@ DELETE /entities/entity123
 204 No Content
 ```
 
-**Status Codes**:
-- `204 No Content`: Entity successfully deleted
-- `404 Not Found`: Entity doesn't exist
-- `500 Internal Server Error`: CRUD service error
-
 ### JSON to Protobuf Conversion
 
 The Ingestion API performs complex conversion between JSON and Protobuf formats:
 
 **Key Conversions**:
 
-1. **Metadata Conversion**:
-```ballerina
-// JSON array to Protobuf map
-record {|string key; string value;|}[] metadata = jsonPayload.metadata;
-map<pbAny:Any> metadataMap = {};
-
-foreach var item in metadata {
-    pbAny:Any packedValue = check pbAny:pack(item.value);
-    metadataMap[item.key] = packedValue;
-}
-```
-
-2. **Attributes Conversion**:
-```ballerina
-// JSON to Protobuf TimeBasedValueList
-record {|string key; AttributeValue value;|}[] attributes = jsonPayload.attributes;
-map<TimeBasedValueList> attributesMap = {};
-
-foreach var attr in attributes {
-    TimeBasedValue[] values = [];
-    foreach var val in attr.value.values {
-        pbAny:Any packedValue = check pbAny:pack(val.value);
-        values.push({
-            startTime: val.startTime,
-            endTime: val.endTime,
-            value: packedValue
-        });
-    }
-    attributesMap[attr.key] = {values: values};
-}
-```
-
-3. **Relationships Conversion**:
-```ballerina
-// JSON to Protobuf Relationship map
-record {|string key; RelationshipValue value;|}[] relationships = jsonPayload.relationships;
-map<Relationship> relationshipsMap = {};
-
-foreach var rel in relationships {
-    relationshipsMap[rel.key] = {
-        id: rel.value.id,
-        relatedEntityId: rel.value.relatedEntityId,
-        name: rel.value.name,
-        startTime: rel.value.startTime,
-        endTime: rel.value.endTime,
-        direction: rel.value.direction
-    };
-}
-```
+The service performs three main data conversions from JSON to Protobuf format. Metadata conversion transforms JSON key-value pairs into Protobuf Any maps for flexible storage. Attributes conversion handles temporal data by converting JSON arrays to TimeBasedValueList structures with start/end times and packed values. Relationships conversion maps JSON relationship objects to Protobuf Relationship structures with entity IDs, names, temporal bounds, and direction information.
 
 ### gRPC Client Configuration
 
-**Connection Setup**:
-```ballerina
-final grpc:Client crudClient = check new (
-    string `${CORE_SERVICE_URL}`,
-    {
-        timeout: 30,  // 30 second timeout
-        retryConfiguration: {
-            maxCount: 3,
-            interval: 1,
-            backoff: 2
-        }
-    }
-);
-```
+The gRPC client is configured with a 30-second timeout and retry logic that attempts up to 3 retries with exponential backoff (1 second initial interval, 2x backoff multiplier) for reliable communication with the Core API service.
 
 **Environment Variables**:
 ```bash
-CORE_SERVICE_HOST=localhost
-CORE_SERVICE_PORT=50051
+CORE_SERVICE_URL=http://localhost:50051
 INGESTION_SERVICE_HOST=0.0.0.0
 INGESTION_SERVICE_PORT=8080
 ```
 
 ### Error Handling
 
-**Error Types**:
-1. **Validation Errors**: Invalid JSON structure
-2. **Conversion Errors**: Failed JSON ↔ Protobuf conversion
-3. **gRPC Errors**: CRUD service communication failures
-4. **Business Logic Errors**: Entity already exists, not found, etc.
+The service handles four main error categories: validation errors for invalid JSON structure, conversion errors during JSON to Protobuf transformation, gRPC errors from CRUD service communication failures, and business logic errors such as entity conflicts or missing entities.
 
 **Error Response Format**:
 ```json
@@ -327,92 +204,24 @@ INGESTION_SERVICE_PORT=8080
 }
 ```
 
-### Testing
-
-**Test File**: `tests/service_test.bal`
-
-**Test Coverage**:
-- Entity creation with all fields
-- Entity creation with minimal fields
-- Entity read by ID
-- Entity update
-- Entity deletion
-- Error scenarios (invalid JSON, entity not found, etc.)
-
-**Running Tests**:
-```bash
-cd opengin/ingestion-api
-bal test
-```
-
 ---
 
 ## Read API
 
 ### Overview
 
-**Location**: `opengin/read-api/`  
-**Language**: Ballerina  
-**Protocol**: HTTP/REST + JSON  
-**Port**: 8081  
-**Contract**: `opengin/contracts/rest/read_api.yaml`
-
-### Directory Structure
-
-```
-opengin/read-api/
-├── read_api_service.bal        # Main service implementation
-├── types_v1_pb.bal               # Generated protobuf types for Ballerina
-├── types.bal                     # Type definitions
-├── Ballerina.toml                # Package configuration
-├── Dependencies.toml             # Dependency versions
-├── env.template                  # Environment variable template
-├── tests/
-│   └── read_api_service_test.bal  # Service tests
-└── target/                       # Build outputs
-```
+The Read API is a Ballerina REST service that handles entity queries and retrieval using HTTP/REST + JSON protocol with an OpenAPI contract for client integration.
 
 ### Service Implementation
 
-**File**: `read_api_service.bal`
-
 The Read API provides specialized endpoints for retrieving entity data:
 
-```ballerina
-service /v1/entities on new http:Listener(8081) {
-    
-    // Get entity metadata
-    resource function get [string id]/metadata() 
-        returns json|error {
-        // Implementation
-    }
-    
-    // Get entity relationships
-    resource function get [string id]/relationships(
-        string? name = (),
-        string? direction = (),
-        string? relatedEntityId = (),
-        string? activeAt = ()
-    ) returns json|error {
-        // Implementation
-    }
-    
-    // Get entity attributes
-    resource function get [string id]/attributes(
-        string? name = (),
-        string? activeAt = ()
-    ) returns json|error {
-        // Implementation
-    }
-    
-    // Get complete entity with selective fields
-    resource function get [string id](
-        string[]? output = ()
-    ) returns json|error {
-        // Implementation
-    }
-}
-```
+- **GET /v1/entities/{id}/metadata** - Retrieve entity metadata
+- **GET /v1/entities/{id}/relationships** - Get entity relationships with optional filtering (name, direction, relatedEntityId, activeAt)
+- **GET /v1/entities/{id}/attributes** - Get entity attributes with optional filtering (name, activeAt)
+- **GET /v1/entities/{id}** - Get complete entity with selective field output
+
+All endpoints return JSON responses or errors.
 
 ### Query Operations
 
@@ -482,19 +291,17 @@ GET /v1/entities/entity123/attributes?name=salary&activeAt=2024-06-01T00:00:00Z
 ```json
 {
   "attributes": {
-    "salary": {
-      "values": [
-        {
-          "startTime": "2024-01-01T00:00:00Z",
-          "endTime": "2024-06-30T23:59:59Z",
-          "value": 100000
-        },
-        {
-          "startTime": "2024-07-01T00:00:00Z",
-          "endTime": null,
-          "value": 110000
-        }
-      ]
+    "expenses": {
+      "startTime": "2024-01-15T00:00:00Z",
+      "endTime": "2024-01-17T23:59:59Z",
+      "value": {
+        "columns": ["type", "amount", "date", "category"],
+        "rows": [
+          ["Travel", 500, "2024-01-15", "Business"],
+          ["Meals", 120, "2024-01-16", "Entertainment"],
+          ["Equipment", 300, "2024-01-17", "Office"]
+        ]
+      }
     }
   }
 }
@@ -577,8 +384,7 @@ final grpc:Client crudClient = check new (
 
 **Environment Variables**:
 ```bash
-CORE_SERVICE_HOST=localhost
-CORE_SERVICE_PORT=50051
+CORE_SERVICE_URL=http://localhost:50051
 READ_SERVICE_HOST=0.0.0.0
 READ_SERVICE_PORT=8081
 ```
@@ -601,123 +407,6 @@ Instead of:
   ├─ Neo4j (relationships)      ✗ Skipped
   └─ PostgreSQL (attributes)    ✗ Skipped
 ```
-
-### Testing
-
-**Test File**: `tests/read_api_service_test.bal`
-
-**Test Coverage**:
-- Get metadata
-- Get relationships with filters
-- Get attributes with temporal queries
-- Get entity with selective fields
-- Error scenarios
-
-**Running Tests**:
-```bash
-cd opengin/read-api
-bal test
-```
-
----
-
-## OpenAPI Contracts
-
-### Ingestion API Contract
-
-**File**: `opengin/contracts/rest/update_api.yaml`
-
-Defines:
-- Entity schema
-- Request/response structures
-- HTTP methods and paths
-- Status codes
-- Error responses
-
-**Code Generation**:
-```bash
-bal openapi -i ../contracts/rest/ingestion_api.yaml --mode service
-```
-
-### Read API Contract
-
-**File**: `opengin/contracts/rest/read_api.yaml`
-
-Defines:
-- Query parameters
-- Filter options
-- Response structures
-- Pagination (if implemented)
-
-**Code Generation**:
-```bash
-bal openapi -i ../contracts/rest/read_api.yaml --mode service
-```
-
----
-
-## Swagger UI
-
-### Overview
-
-**Location**: `opengin/swagger-ui/`  
-**Purpose**: Interactive API documentation
-
-### Features
-
-- View all API endpoints
-- Test API calls directly from browser
-- See request/response examples
-- Understand data models
-
-### Access
-
-```bash
-# Start Swagger UI
-cd opengin/swagger-ui
-python3 serve.py
-
-# Open browser
-http://localhost:8082
-```
-
-### Configuration
-
-The Swagger UI serves the OpenAPI specifications from:
-- `opengin/contracts/rest/ingestion_api.yaml`
-- `opengin/contracts/rest/read_api.yaml`
-
----
-
-## Security Considerations
-
-### Current State
-
-- No authentication/authorization (development mode)
-- All endpoints publicly accessible
-- No rate limiting
-
-### Future Enhancements
-
-1. **Authentication**:
-   - JWT token-based authentication
-   - OAuth 2.0 integration
-   - API key support
-
-2. **Authorization**:
-   - Role-based access control (RBAC)
-   - Entity-level permissions
-   - Field-level access control
-
-3. **Security Headers**:
-   - CORS configuration
-   - HTTPS enforcement
-   - Security headers (CSP, HSTS, etc.)
-
-4. **Rate Limiting**:
-   - Request throttling
-   - IP-based limits
-   - User-based quotas
 
 ---
 
@@ -763,40 +452,13 @@ GET /v1/entities/entity123?output=metadata
 # Returns only what you need (fast, small payload)
 ```
 
-### 2. Use Specific Query Endpoints
-
-❌ **Don't**:
-```bash
-GET /entities/entity123  # Get full entity, then filter relationships in client
-```
-
-✅ **Do**:
-```bash
-GET /v1/entities/entity123/relationships?name=reports_to
-# Server-side filtering, better performance
-```
-
-### 3. Use Temporal Queries
-
-❌ **Don't**:
-```bash
-GET /v1/entities/entity123/attributes?name=salary
-# Returns all values, filter in client
-```
-
-✅ **Do**:
-```bash
-GET /v1/entities/entity123/attributes?name=salary&activeAt=2024-03-15T00:00:00Z
-# Returns only relevant value
-```
-
 ---
 
 ## Related Documentation
 
 - [Main Architecture Overview](./overview.md)
-- [Ingestion API](../../opengin/ingestion-api/README.md)
-- [Read API](../../opengin/read-api/README.md)
+- [Ingestion API](../ingestion-api.md)
+- [Read API](../read-api.md)
 
 ---
 
