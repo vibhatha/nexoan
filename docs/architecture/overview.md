@@ -596,8 +596,6 @@ Ingestion & Read APIs (wait for Core API to be healthy)
 
 ## Future Enhancements
 
-Based on TODOs found in the codebase:
-
 1. **Connection Pooling** - Optimize database connections
 2. **Caching Layer** - Redis for frequently accessed data
 3. **Query Optimization** - Indexed queries and batch operations
