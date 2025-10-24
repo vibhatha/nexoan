@@ -87,33 +87,20 @@
 ### 1. API Layer (Client-Facing Services)
 
 #### Ingestion API (Ballerina, Port 8080)
-- **Purpose**: Handle entity mutations (CREATE, UPDATE, DELETE)
-- **Technology**: Ballerina REST service
-- **Location**: `opengin/ingestion-api/`
-- **Responsibilities**:
-  - Accept JSON payloads from clients
-  - Validate request structure
-  - Convert JSON to Protobuf Entity messages
-  - Communicate with Core API via gRPC
-  - Convert Protobuf responses back to JSON
-- **Contract**: OpenAPI specification at `opengin/contracts/rest/ingestion_api.yaml`
+- Handles entity mutations (CREATE, UPDATE, DELETE) via REST endpoints
+- Converts JSON to Protobuf and communicates with Core API via gRPC
+- Provides OpenAPI contract for client integration
+- **Documentation**: [Ingestion API Details](ingestion-api.md)
 
 #### Read API (Ballerina, Port 8081)
-- **Purpose**: Handle entity queries and retrieval
-- **Technology**: Ballerina REST service
-- **Location**: `opengin/read-api/`
-- **Responsibilities**:
-  - Accept query requests from clients
-  - Support selective field retrieval (metadata, relationships, attributes)
-  - Filter and search capabilities
-  - Communicate with Core API via gRPC
-  - Return formatted JSON responses
-- **Contract**: OpenAPI specification at `opengin/contracts/rest/read_api.yaml`
+- Handles entity queries and retrieval with selective field support
+- Provides filtering, search capabilities, and formatted JSON responses
+- Communicates with Core API via gRPC for data access
+- **Documentation**: [Read API Details](read-api.md)
 
 #### Swagger UI
-- **Purpose**: Interactive API documentation
-- **Location**: `opengin/swagger-ui/`
-- **Serves**: OpenAPI specifications for Ingestion and Read APIs
+- Provides interactive API documentation for Ingestion and Read APIs
+- Serves OpenAPI specifications with testing capabilities
 
 ### 2. Service Layer
 
