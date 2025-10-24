@@ -636,20 +636,6 @@ GET    http://localhost:8081/v1/entities/{id}/relationships  # Get relationships
 GET    http://localhost:8081/v1/entities/{id}/attributes     # Get attributes
 ```
 
-### Database Connections
-
-```bash
-# MongoDB
-mongodb://admin:admin123@localhost:27017/opengin?authSource=admin
-
-# Neo4j
-bolt://neo4j:neo4j123@localhost:7687
-http://localhost:7474
-
-# PostgreSQL
-postgresql://postgres:postgres@localhost:5432/opengin
-```
-
 ### Docker Commands
 
 ```bash
