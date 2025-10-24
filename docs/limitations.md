@@ -7,6 +7,11 @@
 3. Sub-graph insertion as an attribute is not yet supported. 
 4. Scalar value insertion as an attribute is not yet supported.
 
+## Query API
+
+1. Unstructured data saving as attributes is not yet supported. 
+2. Sub-graph data saving as attributes is not yet supported. 
+
 ## OpenAPI Contract and Ballerina Service generation
 
 1. Time is being infered as `string` field. Must implement a time data type in the protobuf specification. 
