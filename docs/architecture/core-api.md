@@ -1,4 +1,4 @@
-# Core API Documentation
+# Core API
 
 The Core API is the central orchestration service in the OpenGIN platform, responsible for coordinating data operations across multiple databases and providing a unified interface for entity management.
 

@@ -94,7 +94,7 @@
   - Accept JSON payloads from clients
   - Validate request structure
   - Convert JSON to Protobuf Entity messages
-  - Communicate with CRUD Service via gRPC
+  - Communicate with Core API via gRPC
   - Convert Protobuf responses back to JSON
 - **Contract**: OpenAPI specification at `opengin/contracts/rest/ingestion_api.yaml`
 
@@ -106,7 +106,7 @@
   - Accept query requests from clients
   - Support selective field retrieval (metadata, relationships, attributes)
   - Filter and search capabilities
-  - Communicate with CRUD Service via gRPC
+  - Communicate with Core API via gRPC
   - Return formatted JSON responses
 - **Contract**: OpenAPI specification at `opengin/contracts/rest/read_api.yaml`
 
@@ -414,7 +414,8 @@ The entity data is strategically distributed across three databases:
     │                    │                       │                      │
     │ GET /entities/123  │                       │                      │
     │ ?output=metadata,  │                       │                      │
-    │  relationships     │                       │                      │
+    │  relationships,    │                       │                      │
+    |  attributes        |                       |                      |
     ├───────────────────>│                       │                      │
     │                    │                       │                      │
     │                    │ gRPC: ReadEntity      │                      │
@@ -634,7 +635,7 @@ Ingestion & Read APIs (wait for Core API to be healthy)
 
 ## Design Decisions
 
-### Why Multiple Databases?
+### Why A Polyglot Database?
 
 **MongoDB for Metadata:**
 - Schema-less structure for flexible metadata
@@ -678,9 +679,8 @@ Based on TODOs found in the codebase:
 4. **Error Recovery** - Rollback mechanisms and retry logic
 5. **Transaction Support** - Distributed transactions across databases
 6. **GraphQL API** - Alternative query interface
-7. **Event Streaming** - Kafka integration for event-driven architecture
-8. **Observability** - Distributed tracing and metrics
-9. **Advanced Querying** - Join, Aggregation, filters across the polyglot database
+7. **Observability** - Distributed tracing and metrics
+8. **Advanced Querying** - Join, Aggregation, filters across the polyglot database
 
 ---
 
@@ -691,8 +691,8 @@ Based on TODOs found in the codebase:
 - [Storage Types](../storage.md) - Storage type inference details
 - [Backup Integration](../deployment/BACKUP_INTEGRATION.md) - Backup and restore guide
 - [Core API](../architecture/core-api.md) - Core API documentation
-- [Ingestion API](../../nexoan/update-api/README.md) - Ingestion API documentation
-- [Read API](../../nexoan/query-api/README.md) - Read API documentation
+- [Ingestion API](../architecture/ingestion-api.md) - Ingestion API documentation
+- [Read API](../architecture/read-api.md) - Read API documentation
 
 ---
 
