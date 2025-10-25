@@ -1,6 +1,6 @@
 # Type Inference System
 
-The type inference system is a core component of the LDF Architecture, responsible for automatically determining the appropriate data types for values in the data structure. This document explains how the system works, what types are supported, and how type inference rules are applied.
+The type inference system is a core component of the OpenGIN Architecture, responsible for automatically determining the appropriate data types for values in the data structure. This document explains how the system works, what types are supported, and how type inference rules are applied.
 
 ## Supported Data Types
 
@@ -37,33 +37,16 @@ The type inference system is a core component of the LDF Architecture, responsib
    - Calendar dates without time information
    - Supported formats:
      - `YYYY-MM-DD` (e.g., "2024-03-20")
-     - `DD/MM/YYYY` (e.g., "20/03/2024")
-     - `MM/DD/YYYY` (e.g., "03/20/2024")
-     - `YYYY.MM.DD` (e.g., "2024.03.20")
-     - `DD-MM-YYYY` (e.g., "20-03-2024")
-     - `MM-DD-YYYY` (e.g., "03-20-2024")
-     - `YYYY/MM/DD` (e.g., "2024/03/20")
 
 2. **Time (`time`)**
    - Time of day without date information
    - Supported formats:
-     - `HH:MM:SS` (e.g., "14:30:00")
-     - `HH:MM` (e.g., "14:30")
-     - `h:MM AM/PM` (e.g., "2:30 PM")
-     - `HH:MM:SS.mmm` (e.g., "14:30:00.000")
      - `HH:MM:SS±HH:MM` (e.g., "14:30:00-07:00")
-     - `HH:MM:SSZ` (e.g., "14:30:00Z")
 
 3. **DateTime (`datetime`)**
    - Combined date and time information
    - Supported formats:
      - RFC3339 (e.g., "2024-03-20T14:30:00Z07:00")
-     - `YYYY-MM-DD HH:MM:SS` (e.g., "2024-03-20 14:30:00")
-     - `YYYY-MM-DDTHH:MM:SS` (e.g., "2024-03-20T14:30:00")
-     - `DD/MM/YYYY HH:MM:SS` (e.g., "20/03/2024 14:30:00")
-     - `MM/DD/YYYY HH:MM:SS` (e.g., "03/20/2024 14:30:00")
-     - `YYYY.MM.DD HH:MM:SS` (e.g., "2024.03.20 14:30:00")
-     - `YYYY-MM-DD HH:MM:SS.mmm` (e.g., "2024-03-20 14:30:00.000")
 
 ## Type Inference Rules
 
