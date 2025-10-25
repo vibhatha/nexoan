@@ -1,13 +1,13 @@
 # Limitations
 
-## Read API
+## [Read API](architecture/read-api.md)
 
 1. Read for data like tables or documents (metadata, unstructured documents) doesn't include filters for querying parameters inside tables. 
 2. Join, aggregations and advanced data processing queries are not yet supported. 
 3. Sub-graph insertion as an attribute is not yet supported. 
 4. Scalar value insertion as an attribute is not yet supported.
 
-## Ingestion API
+## [Ingestion API](architecture/ingestion-api.md)
 
 1. Unstructured data saving as attributes is not yet supported. 
 2. Sub-graph data saving as attributes is not yet supported. 
