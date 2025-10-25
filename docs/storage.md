@@ -267,3 +267,7 @@ The system follows these rules to determine the storage type:
   }
 }
 ```
+
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team

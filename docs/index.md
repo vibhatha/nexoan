@@ -281,7 +281,6 @@ GET /v1/entities/{id}/attributes?name=salary&activeAt=2024-03-15T00:00:00Z
 
 ---
 
-**Last Updated**: October 2024  
-**Documentation Status**: ✅ Complete and Current  
-**Maintained By**: OpenGIN Development Team
-
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team

@@ -657,7 +657,7 @@ docker-compose build
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: October 2024  
-**Maintained By**: OpenGIN Development Team
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team
 

@@ -236,7 +236,7 @@ See [Backup Integration Guide](../deployment/BACKUP_INTEGRATION.md) for complete
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: October 2024  
-**Component**: Database Schemas
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team
 

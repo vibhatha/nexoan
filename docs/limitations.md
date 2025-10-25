@@ -15,3 +15,7 @@
 ## OpenAPI Contract and Ballerina Service generation
 
 1. Time is being infered as `string` field. Must implement a time data type in the protobuf specification. 
+
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team

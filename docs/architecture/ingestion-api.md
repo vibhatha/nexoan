@@ -534,5 +534,5 @@ bal run
 ---
 
 **Last Updated:** October 2024  
-**Version:** 1.0.0-alpha  
+**Version:** 1.0.0 - alpha  
 **Maintained By:** OpenGIN Development Team

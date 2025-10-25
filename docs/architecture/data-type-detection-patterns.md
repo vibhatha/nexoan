@@ -89,3 +89,7 @@ The system follows this detection sequence for the three core storage types:
 
 3. **Default to Document/Map Structure**:
    - If object with fields but no specific pattern, return `MapData`
+
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team

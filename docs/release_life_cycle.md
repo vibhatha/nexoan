@@ -137,3 +137,7 @@ To maintain a consistent workflow across teams and CI/CD pipelines:
 ---
 
 _This standard ensures OpenGIN releases remain consistent, transparent, and traceable across all development and deployment environments._
+
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team

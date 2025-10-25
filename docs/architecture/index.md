@@ -16,11 +16,9 @@ Complete system architecture overview including:
 - Technology stack
 - Key features and design decisions
 
-**Recommended for**: Everyone - developers, architects, stakeholders
-
 ---
 
-### 2. [Core API](./crud-service-details.md)
+### 2. [Core API](./core-api.md)
 In-depth documentation of the CRUD Service:
 - Directory structure
 - gRPC server implementation
@@ -31,8 +29,6 @@ In-depth documentation of the CRUD Service:
 - Testing strategies
 - Performance considerations
 - Error handling and logging
-
-**Recommended for**: Backend developers, service implementers
 
 ---
 
@@ -49,8 +45,6 @@ Complete API layer documentation:
 - Error handling
 - Best practices
 
-**Recommended for**: API consumers, frontend developers, integration engineers
-
 ---
 
 ### 4. [Database Schemas](./database-schemas.md)
@@ -62,8 +56,6 @@ Detailed database schema documentation:
 - Schema evolution strategies (Not Implemented)
 - Backup and restore procedures
 - Performance optimization
-
-**Recommended for**: Database administrators, backend developers, data engineers
 
 ---
 
@@ -244,14 +236,14 @@ Returns attribute value as it was on specific date.
 
 ### 2. Setting Up Development Environment
 - Clone repository
-- Start databases: `docker-compose up -d mongodb neo4j postgres`
-- Start CRUD service: `cd opengin/crud-api && ./crud-service`
-- Start APIs: Update API (port 8080), Query API (port 8081)
+- Start databases
+- Start Core API service
+- Start APIs: Ingestion API (port 8080), Read API (port 8081)
 
 ### 3. Making Changes
 
 **Adding new API endpoint**:
-1. Update OpenAPI contract in `opengin/contracts/rest/`
+1. Update OpenAPI contract
 2. Regenerate service code
 3. Implement endpoint logic
 4. Update [API Layer Details](./api-layer-details.md)
@@ -259,10 +251,10 @@ Returns attribute value as it was on specific date.
 **Adding Core API feature**:
 1. Implement in appropriate layer (server, engine, repository)
 2. Add tests
-3. Update [Core API Details](./crud-service-details.md)
+3. Update [Core API Details](./core-api.md)
 
 **Adding new API endpoints for Read/Ingestion**:
-1. Update OpenAPI contract in `nexoan/contracts/rest/`
+1. Update OpenAPI contract
 2. Regenerate service code
 3. Implement endpoint logic
 4. Update [Ingestion API Details](./ingestion-api.md) or [Read API Details](./read-api.md)
@@ -273,8 +265,8 @@ Returns attribute value as it was on specific date.
 3. Update [Database Schemas](./database-schemas.md)
 
 ### 4. Testing
-- Unit tests: `go test ./...` or `bal test`
-- Integration tests: E2E tests in `opengin/tests/e2e/`
+- Unit tests
+- Integration tests: E2E tests
 - Database tests: Ensure all databases are running
 
 ### 5. Documentation
@@ -292,32 +284,15 @@ Returns attribute value as it was on specific date.
 - Use temporal queries to reduce data transfer
 
 ### Core Layer
-- Connection pooling for all databases
-- Parallel operations where possible
+- Connection pooling for all databases (yet to be supported at scale)
+- Parallel operations where possible (yet to be supported)
 - Efficient Protobuf serialization
 
 ### Database Layer
-- Proper indexing on all tables/collections
-- Cypher query optimization
-- PostgreSQL query planning
+- Proper indexing on all tables/collections (yet to be supported at scale)
+- Cypher query optimization (iterative support based on demands in applications)
 
 See individual docs for detailed optimization strategies.
-
----
-
-## Security Considerations
-
-### Current State
-- Development mode: No authentication
-- All endpoints publicly accessible
-- No encryption in transit (within Docker network)
-
-### Planned Enhancements
-- JWT authentication
-- Role-based access control (RBAC)
-- TLS/SSL for external communication
-- API rate limiting
-- Field-level access control
 
 ---
 
@@ -365,14 +340,14 @@ Update architecture docs when:
 
 ### In This Repository
 
-- [Main README](../../README.md) - Project overview and quick start
+- [Entry Point to OpenGIN](../../README.md) - Project overview and quick start
 - [How It Works](../how_it_works.md) - Detailed data flow
 - [Data Types](../datatype.md) - Type inference system
 - [Storage Types](../storage.md) - Storage inference system
-- [Deployment Guide](../deployment/BACKUP_INTEGRATION.md) - Backup and restore
-- [Core API README](../architecture/core-api.md) - Polyglot Database Query Processing
-- [Ingestion API README](../architecture/ingestion-api.md) - Ingestion API setup
-- [Read API README](../architecture/read-api.md) - Read API setup
+- [Backup Guide](../deployment/BACKUP_INTEGRATION.md) - Backup and restore
+- [Core API](../architecture/core-api.md) - Polyglot Database Query Processing
+- [Ingestion API](../architecture/ingestion-api.md) - Ingestion API setup
+- [Read API](../architecture/read-api.md) - Read API setup
 
 ### External Resources
 
@@ -404,6 +379,6 @@ For questions about the architecture:
 
 ---
 
-**Last Updated**: October 2024  
-**Documentation Status**: ✅ Complete and Current  
-**Maintained By**: OpenGIN Development Team
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team

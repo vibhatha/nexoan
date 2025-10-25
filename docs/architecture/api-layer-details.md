@@ -462,7 +462,7 @@ GET /v1/entities/entity123?output=metadata
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: October 2024  
-**Component**: API Layer
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team
 

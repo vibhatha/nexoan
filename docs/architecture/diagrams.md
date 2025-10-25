@@ -637,7 +637,7 @@ When updating the architecture:
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: October 2024  
-**Format**: Mermaid Diagram Language
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team
 
