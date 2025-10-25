@@ -32,22 +32,22 @@ The Core API serves as the business logic layer that:
 │  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │                  Engine Layer                           │    │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │    │
-│  │  │AttributeProc│ │TypeInference│ │StorageInfer │        │    │
-│  │  │essor        │ │             │ │ence         │        │    │
-│  │  └─────────────┘ └─────────────┘ └─────────────┘        │    │
+│  │                      Engine Layer                       │    │
+│  │    ┌─────────────┐ ┌─────────────┐ ┌─────────────┐      │    │
+│  │    │AttributeProc│ │TypeInference│ │StorageInfer │      │    │
+│  │    │essor        │ │             │ │ence         │      │    │
+│  │    └─────────────┘ └─────────────┘ └─────────────┘      │    │
 │  │  ┌─────────────────────────────────────────────────┐    │    │
-│  │  │         GraphMetadataManager                    │    │    │
+│  │  │               GraphMetadataManager              │    │    │
 │  │  └─────────────────────────────────────────────────┘    │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │                Repository Layer                         │    │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │    │
-│  │  │   MongoDB   │ │    Neo4j    │ │ PostgreSQL  │        │    │
-│  │  │ Repository  │ │ Repository  │ │ Repository  │        │    │
-│  │  └─────────────┘ └─────────────┘ └─────────────┘        │    │
+│  │                     Repository Layer                    │    │
+│  │      ┌─────────────┐ ┌─────────────┐ ┌─────────────┐    │    │
+│  │      │   MongoDB   │ │    Neo4j    │ │ PostgreSQL  │    │    │
+│  │      │ Repository  │ │ Repository  │ │ Repository  │    │    │
+│  │      └─────────────┘ └─────────────┘ └─────────────┘    │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -72,7 +72,6 @@ Creates a new entity with metadata, attributes, and relationships.
 - Automatic type inference for attributes
 - Dynamic storage strategy determination
 - Temporal relationship support
-- Atomic operations across databases
 
 ### 2. ReadEntity
 
@@ -107,11 +106,14 @@ Updates existing entity data while maintaining temporal consistency.
 
 Removes entity and all associated data from all databases.
 
+> **⚠️ Important Note**
+>      Deletion policy of intermediate nodes require custom configurations.
+>      This feature will be added in an upcoming release.
+
 **Request Flow:**
-1. Delete metadata from MongoDB
-2. Delete entity node and relationships from Neo4j
-3. Delete attributes from PostgreSQL
-4. Return deletion confirmation
+1. Delete metadata from MongoDB (supported)
+2. Delete entity node and relationships from Neo4j (yet to be supported)
+3. Delete attributes from PostgreSQL (yet to be supported)
 
 ### 5. QueryEntity
 
@@ -183,7 +185,7 @@ Data Structure Analysis → Storage Type Determination → Database Assignment
 ### GraphMetadataManager
 
 **Purpose:** Manages graph-specific metadata and relationships. Acts as a lookup
-graph for entity and its data. 
+graph for entity and its attributes. 
 
 **Key Functions:**
 - Entity node creation and updates
@@ -214,72 +216,6 @@ graph for entity and its data.
   }
 }
 ```
-
-### Neo4j Repository
-
-**Purpose:** Manages entity nodes and relationships.
-
-**Key Operations:**
-- `HandleGraphEntityCreation()` - Create entity nodes
-- `GetGraphEntity()` - Retrieve entity information
-- `HandleGraphRelationshipsCreate()` - Create relationships
-- `GetGraphRelationships()` - Retrieve relationships
-
-**Node Structure:**
-```cypher
-(entity123:Entity {
-  id: "entity123",
-  kind_major: "Person",
-  kind_minor: "Employee",
-  name: "John Doe",
-  created: "2024-01-01T00:00:00Z",
-  terminated: null
-})
-```
-
-### PostgreSQL Repository
-
-**Purpose:** Manages attribute storage with temporal support.
-
-**Key Operations:**
-- `HandleAttributeCreation()` - Store attributes
-- `GetAttributes()` - Retrieve attributes
-- `UpdateAttributes()` - Update attribute values
-- `DeleteAttributes()` - Remove attributes
-
-**Table Structure:**
-- `attribute_schemas` - Attribute type definitions
-- `entity_attributes` - Entity-attribute mappings
-- `attr_*` - Dynamic attribute tables
-
----
-
-### Database Connection Pooling
-
-- **MongoDB:** Connection pool with configurable size
-- **Neo4j:** Bolt connection pool
-- **PostgreSQL:** Connection pool with transaction support
-
----
-
-## Error Handling
-
-### Error Types
-
-1. **Validation Errors**
-   - Invalid entity structure
-   - Missing required fields
-   - Data type mismatches
-
-2. **Database Errors**
-   - Connection failures
-   - Transaction rollbacks
-   - Constraint violations
-
-3. **Processing Errors**
-   - Type inference failures
-   - Storage strategy errors
-   - Temporal data conflicts
 
 ---
 

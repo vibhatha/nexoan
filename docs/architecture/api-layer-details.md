@@ -457,8 +457,8 @@ GET /v1/entities/entity123?output=metadata
 ## Related Documentation
 
 - [Main Architecture Overview](./overview.md)
-- [Ingestion API](../ingestion-api.md)
-- [Read API](../read-api.md)
+- [Ingestion API](./ingestion-api.md)
+- [Read API](./read-api.md)
 
 ---
 
