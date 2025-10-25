@@ -108,17 +108,15 @@ docker exec backup-manager /init.sh restore_from_github 0.0.1
 The system expects this structure in [LDFLK/data-backups](https://github.com/LDFLK/data-backups):
 
 ```
-data-backups-0.0.1/
+data-backups/
 └── opengin
-    └── version
-        └── 0.0.1
-            └── development
-                ├── mongodb
-                │   └── opengin.tar.gz
-                ├── postgres
-                │   └── opengin.tar.gz
-                └── neo4j
-                    └── neo4j.dump
+    └── development
+        ├── mongodb
+        │   └── opengin.tar.gz
+        ├── postgres
+        │   └── opengin.tar.gz
+        └── neo4j
+            └── neo4j.dump
 ```
 
 ### GitHub Archive URLs
