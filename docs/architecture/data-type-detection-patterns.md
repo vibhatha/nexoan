@@ -1,13 +1,13 @@
 # Core Storage Type Detection Patterns
 
-This document describes the JSON patterns used by the Nexoan system to automatically detect and classify the three core storage types when attributes are fed into the system.
+This document describes the JSON patterns used by the OpenGIN system to automatically detect and classify the three core storage types when attributes are fed into the system.
 
 ## Overview
 
 The system uses a hierarchical detection approach with the following precedence order for the three core storage types:
-1. **Tabular Data** (highest priority)
-2. **Graph Data** 
-3. **Document/Map Data** (lowest priority)
+1. **Tabular Data** (supported)
+2. **Graph Data** (supported as entity creation, yet to be supported as an attribute to make sub-graphs)
+3. **Document/Map Data** (supported as metadata but yet to be supported as an attribute)
 
 ## Detection Patterns
 
@@ -89,16 +89,3 @@ The system follows this detection sequence for the three core storage types:
 
 3. **Default to Document/Map Structure**:
    - If object with fields but no specific pattern, return `MapData`
-
-### Storage Type Constants
-
-```go
-const (
-    TabularData StorageType = "tabular"
-    MapData     StorageType = "map"
-    GraphData   StorageType = "graph"
-    UnknownData StorageType = "unknown"
-)
-```
-
-This pattern-based detection system enables automatic data classification and appropriate storage backend selection in the Nexoan platform for the three core storage types: Tabular (PostgreSQL), Graph (Neo4j), and Document/Map (MongoDB).
