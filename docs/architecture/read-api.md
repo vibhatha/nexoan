@@ -372,42 +372,6 @@ READ_SERVICE_PORT=8081
 
 ---
 
-## Development
-
-### Local Development
-
-```bash
-# Start Core API first
-cd opengin/core-api
-go run cmd/server/service.go
-
-# Start Read API
-cd opengin/read-api
-bal run
-```
-
-### Testing
-
-```bash
-# Run unit tests
-bal test
-
-# Test specific endpoints
-curl -X GET "http://localhost:8081/v1/entities/entity123/metadata"
-```
-
-### Building
-
-```bash
-# Build JAR file
-bal build
-
-# Run
-bal run
-```
-
----
-
 ## API Contracts
 
 ### OpenAPI Specification
