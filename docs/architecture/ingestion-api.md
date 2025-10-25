@@ -392,44 +392,6 @@ INGESTION_SERVICE_PORT=8080
 
 ---
 
-## Development
-
-### Local Development
-
-```bash
-# Start Core API first
-cd opengin/core-api
-go run cmd/server/service.go
-
-# Start Ingestion API
-cd opengin/ingestion-api
-bal run
-```
-
-### Testing
-
-```bash
-# Run unit tests
-bal test
-
-# Test entity creation
-curl -X POST "http://localhost:8080/entities" \
-  -H "Content-Type: application/json" \
-  -d '{"id": "test123", "kind": {"major": "Person", "minor": "Employee"}}'
-```
-
-### Building
-
-```bash
-# Build JAR file
-bal build
-
-# Run
-bal run
-```
-
----
-
 ## Data Flow Examples
 
 ### Create Entity Flow
