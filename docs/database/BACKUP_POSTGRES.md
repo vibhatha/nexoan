@@ -334,3 +334,7 @@ For additional help or issues:
 2. Verify container status: `docker ps`
 3. Test database connectivity: `docker exec postgres pg_isready -U postgres`
 4. Review backup file permissions and locations
+
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team

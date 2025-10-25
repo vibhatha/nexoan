@@ -328,3 +328,7 @@ docker logs backup-manager
 ```
 
 This covers both local backup management and GitHub-based restoration workflows! 🎯
+
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team

@@ -155,3 +155,7 @@ neo4j-admin database upload neo4j \
 ### 5. Verify the Migration
 
 Connect to your Neo4j Aura instance and verify that the new data has been inserted.
+
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team

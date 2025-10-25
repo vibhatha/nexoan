@@ -379,3 +379,7 @@ For issues or questions regarding MongoDB backup and restore:
 2. Review MongoDB documentation
 3. Check container logs: `docker logs mongodb`
 4. Verify network connectivity: `docker network ls`
+
+**Last Updated:** October 2024  
+**Version:** 1.0.0 - alpha  
+**Maintained By:** OpenGIN Development Team
