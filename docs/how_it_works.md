@@ -2,7 +2,7 @@
 
 This document describes the complete workflow of how data flows through the system, from initial JSON input to final storage in the databases.
 
-## 1. Data Entry Point (Ingestion API)
+## 1. Data Entry Point ([Ingestion API](../architecture/ingestion-api.md))
 
 The system receives data through a REST API built with Ballerina. The API accepts JSON payloads for entity creation and updates.
 
@@ -24,12 +24,19 @@ The system receives data through a REST API built with Ballerina. The API accept
         "role": "Software Engineer"
     },
     "attributes": {
-        "salary": {
+        "expense_records": {
             "values": [
                 {
                     "startTime": "2024-01-01T00:00:00Z",
                     "endTime": "",
-                    "value": "100000"
+                    "value": {
+                        "columns": ["date", "category", "amount", "description"],
+                        "rows": [
+                            ["2024-01-15", "groceries", 85.50, "weekly shopping"],
+                            ["2024-01-22", "utilities", 120.00, "electric bill"],
+                            ["2024-01-28", "transportation", 45.00, "gas"]
+                        ]
+                    }
                 }
             ]
         }
@@ -46,7 +53,7 @@ The system receives data through a REST API built with Ballerina. The API accept
 }
 ```
 
-## 2. Data Transformation (Ingestion API → Core API)
+## 2. Data Transformation ([Ingestion API](../architecture/ingestion-api.md) → [Core API](../architecture/core-api.md))
 
 ### 2.1 JSON to Protobuf Conversion
 The Update API converts the JSON payload into a protobuf Entity message. This conversion happens in the `convertJsonToEntity` function:
@@ -63,7 +70,7 @@ The Update API converts the JSON payload into a protobuf Entity message. This co
                                       │
                                       ▼
                 ┌─────────────────────────────────────────────────┐
-                │            🔍 Parse JSON                        │
+                │            🔍 Parse JSON                         │
                 │               Payload                           │
                 └─────────────────────┬───────────────────────────┘
                                       │
@@ -186,7 +193,7 @@ The flowchart above shows the complete data transformation pipeline from JSON in
 ### 2.2 gRPC Communication
 The converted protobuf message is sent to the CRUD service via gRPC. The communication happens on port 50051.
 
-## 3. Core API 
+## 3. Query Engine Flow ([Core API](../architecture/core-api.md))
 
 The Core API receives the protobuf message and processes it through multiple steps:
 
@@ -262,7 +269,7 @@ The entity and its relationships are stored in Neo4j using a graph-based approac
 - Complex multi-hop queries are efficiently supported
 - Temporal queries can find relationships active at specific time periods
 
-## 4. Data Retrieval Flow (Read API)
+## 4. Data Retrieval Flow ([Read API](../architecture/read-api.md))
 
 ### 4.1 Read Entity Flow
 
