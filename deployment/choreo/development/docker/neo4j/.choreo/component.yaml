@@ -5,6 +5,6 @@ endpoints:
     service:
       basePath: /
       port: 7687
-    type: REST
+    type: GRPC
     networkVisibilities: 
-      - Project
+      - Public
