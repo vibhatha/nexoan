@@ -43,6 +43,10 @@ ENV NEO4J_AUTH=neo4j/neo4j123 \
     NEO4J_server_bolt_listen__address=0.0.0.0:7687 \
     NEO4J_server_http_listen__address=0.0.0.0:7474
 
+# Echo Neo4j credentials during build
+RUN echo "Neo4j Username: neo4j" && \
+    echo "Neo4j Password: neo4j123"
+
 # Create data directories with proper permissions for choreo user
 RUN mkdir -p /neo4j_data /neo4j_logs /neo4j_plugins /var/log/neo4j /var/lib/neo4j/data /var/lib/neo4j/run \
     && chown -R 10014:10014 /neo4j_data /neo4j_logs /neo4j_plugins /var/log/neo4j /var/lib/neo4j /var/lib/neo4j/run \
@@ -86,6 +90,15 @@ set -e\n\
 log() {\n\
     echo "[$(date +%Y-%m-%d\ %H:%M:%S)] $1: $2"\n\
 }\n\
+\n\
+# Echo Neo4j credentials\n\
+log "INFO" "Neo4j Username: neo4j"\n\
+if [ -n "${NEO4J_AUTH:-}" ]; then\n\
+  if [[ "${NEO4J_AUTH}" == neo4j/* ]]; then\n\
+    password="${NEO4J_AUTH#neo4j/}"\n\
+    log "INFO" "Neo4j Password: $password"\n\
+  fi\n\
+fi\n\
 \n\
 # Handle NEO4J_AUTH like the official image\n\
 if [ -n "${NEO4J_AUTH:-}" ]; then\n\
