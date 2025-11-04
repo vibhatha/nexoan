@@ -7,4 +7,4 @@ endpoints:
       port: 7687
     type: GRPC
     networkVisibilities: 
-      - Public
+      - Project
