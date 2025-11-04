@@ -4,7 +4,7 @@ endpoints:
     displayName: Neo4j Database
     service:
       basePath: /
-      port: 7474
+      port: 7687
     type: REST
     networkVisibilities: 
       - Project
