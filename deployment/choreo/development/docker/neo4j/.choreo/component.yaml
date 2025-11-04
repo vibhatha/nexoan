@@ -3,8 +3,16 @@ endpoints:
   - name: neo4j
     displayName: Neo4j Database
     service:
-      basePath: /
+      basePath: /browser
       port: 7474
-    type: REST
+    type: TCP
+    networkVisibilities: 
+      - Public
+  - name: neo4j-bolt
+    displayName: Neo4j Bolt
+    service:
+      basePath: /
+      port: 7687
+    type: TCP
     networkVisibilities: 
       - Public
