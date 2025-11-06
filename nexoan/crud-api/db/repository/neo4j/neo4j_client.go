@@ -28,6 +28,8 @@ func NewNeo4jRepository(ctx context.Context, config *config.Neo4jConfig) (*Neo4j
 	if err := client.VerifyConnectivity(ctx); err != nil {
 		client.Close(ctx) // Close if connectivity check fails
 		log.Printf("[neo4j_client.NewNeo4jRepository] failed to connect to Neo4j: %v", err)
+		log.Printf("[neo4j_client.NewNeo4jRepository] Neo4j Username: %s", config.Username)
+		log.Printf("[neo4j_client.NewNeo4jRepository] Neo4j Password: %s", config.Password)
 		return nil, fmt.Errorf("failed to connect to Neo4j: %w", err)
 	}
 
