@@ -61,6 +61,13 @@ RUN echo "server.default_listen_address=0.0.0.0" >> /etc/neo4j/neo4j.conf \
     && echo "server.http.listen_address=0.0.0.0:7474" >> /etc/neo4j/neo4j.conf \
     && echo "server.https.listen_address=0.0.0.0:7473" >> /etc/neo4j/neo4j.conf
 
+# Set initial password BEFORE loading data (same as Dockerfile approach)
+RUN if [ -n "${NEO4J_AUTH:-}" ] && [[ "${NEO4J_AUTH}" == neo4j/* ]]; then \
+        password=$(echo "$NEO4J_AUTH" | cut -d'/' -f2) && \
+        echo "Setting initial password during build (before loading data): $password" && \
+        neo4j-admin dbms set-initial-password "$password" || echo "Password setting failed or already set"; \
+    fi
+
 # Build-time data baking: Download and restore data from GitHub during build
 # Hardcoded values for data source
 RUN echo "Baking Neo4j data into image from GitHub..." && \
@@ -110,9 +117,13 @@ if [ -n "${NEO4J_AUTH:-}" ]; then\n\
     echo "dbms.security.auth_enabled=false" >> /etc/neo4j/neo4j.conf\n\
   elif [[ "${NEO4J_AUTH}" == neo4j/* ]]; then\n\
     password="${NEO4J_AUTH#neo4j/}"\n\
-    if [ ! -d "${NEO4J_server_directories_data}/databases" ]; then\n\
-      log "INFO" "Setting initial password..."\n\
-      neo4j-admin dbms set-initial-password "$password" || true\n\
+    log "INFO" "Setting initial password: $password"\n\
+    # Try to set password - this works even if database exists, as long as Neo4j hasn't been started\n\
+    if neo4j-admin dbms set-initial-password "$password" 2>&1; then\n\
+      log "INFO" "Password set successfully"\n\
+    else\n\
+      log "WARNING" "Password setting failed - password may already be set or Neo4j may have been initialized"\n\
+      log "INFO" "Will attempt to change password after Neo4j starts..."\n\
     fi\n\
   fi\n\
 fi\n\
