@@ -88,6 +88,7 @@ func (s *Server) CreateEntity(ctx context.Context, req *pb.Entity) (*pb.Entity, 
 
 // ReadEntity retrieves an entity's metadata
 func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb.Entity, error) {
+	methodStart := time.Now()
 	log.Printf("Reading Entity: %s with output fields: %v", req.Entity.Id, req.Output)
 
 	// Initialize a complete response entity with empty fields
@@ -119,6 +120,8 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 
 	// If no output fields specified, return the entity with basic info
 	if len(req.Output) == 0 {
+		methodDuration := time.Since(methodStart)
+		log.Printf("[TIMING] ReadEntity overall execution time: %v", methodDuration)
 		log.Printf("Returning entity from ReadEntity: %+v", response)
 		return response, nil
 	}
@@ -167,6 +170,8 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 						if err != nil {
 							relationshipsDuration := time.Since(relationshipsStart)
 							log.Printf("[TIMING] Relationships failed in %v: %v", relationshipsDuration, err)
+							methodDuration := time.Since(methodStart)
+							log.Printf("[TIMING] ReadEntity overall execution time: %v (failed)", methodDuration)
 							return nil, err
 						}
 
@@ -179,6 +184,8 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 					log.Printf("[TIMING] Relationships completed in %v", relationshipsDuration)
 				}
 			} else {
+				methodDuration := time.Since(methodStart)
+				log.Printf("[TIMING] ReadEntity overall execution time: %v (validation failed)", methodDuration)
 				return nil, fmt.Errorf("entity is required to fetch relationships")
 			}
 
@@ -245,6 +252,8 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 			log.Printf("Unknown output field requested: %s", field)
 		}
 	}
+	methodDuration := time.Since(methodStart)
+	log.Printf("[TIMING] ReadEntity overall execution time: %v", methodDuration)
 	return response, nil
 }
 
@@ -343,12 +352,18 @@ func (s *Server) DeleteEntity(ctx context.Context, req *pb.EntityId) (*pb.Empty,
 
 // ReadEntities retrieves a list of entities filtered by base attributes
 func (s *Server) ReadEntities(ctx context.Context, req *pb.ReadEntityRequest) (*pb.EntityList, error) {
+	methodStart := time.Now()
+
 	if req.Entity == nil {
+		methodDuration := time.Since(methodStart)
+		log.Printf("[TIMING] ReadEntities overall execution time: %v (validation failed)", methodDuration)
 		return nil, fmt.Errorf("entity is required for filtering entities")
 	}
 
 	// Check if we have either an ID or Kind.Major
 	if req.Entity.Id == "" && (req.Entity.Kind == nil || req.Entity.Kind.Major == "") {
+		methodDuration := time.Since(methodStart)
+		log.Printf("[TIMING] ReadEntities overall execution time: %v (validation failed)", methodDuration)
 		return nil, fmt.Errorf("either Entity.Id or Entity.Kind.Major is required for filtering entities")
 	}
 
@@ -366,6 +381,8 @@ func (s *Server) ReadEntities(ctx context.Context, req *pb.ReadEntityRequest) (*
 	if err != nil {
 		log.Printf("[TIMING] Graph query failed in %v: %v", graphDuration, err)
 		log.Printf("Error filtering entities: %v", err)
+		methodDuration := time.Since(methodStart)
+		log.Printf("[TIMING] ReadEntities overall execution time: %v (failed)", methodDuration)
 		return nil, err
 	}
 	log.Printf("[TIMING] Graph query completed in %v", graphDuration)
@@ -397,6 +414,9 @@ func (s *Server) ReadEntities(ctx context.Context, req *pb.ReadEntityRequest) (*
 
 		entities = append(entities, pbEntity)
 	}
+
+	methodDuration := time.Since(methodStart)
+	log.Printf("[TIMING] ReadEntities overall execution time: %v", methodDuration)
 
 	return &pb.EntityList{
 		Entities: entities,

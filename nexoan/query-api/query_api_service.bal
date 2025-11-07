@@ -373,8 +373,13 @@ service /v1 on ep0 {
     #
     # + return - List of matching entities 
     resource function post entities/search(@http:Payload entities_search_body payload) returns InlineResponse2001Ok|http:BadRequest|error {
+        decimal functionStartTime = time:monotonicNow();
+        
         // Check if we have either ID or Kind.Major
         if payload.id == "" && (payload.kind is () || (<entitiessearch_kind>payload.kind)?.major is () || (<entitiessearch_kind>payload.kind)?.major == "") {
+            decimal functionEndTime = time:monotonicNow();
+            decimal functionExecutionTimeMs = (functionEndTime - functionStartTime) / 1000000.0;
+            io:println(string `[entities/search] Overall execution time: ${functionExecutionTimeMs.toString()} ms (validation failed)`);
             return <http:BadRequest> {
                 body: {
                     "error": "Invalid search criteria",
@@ -419,10 +424,14 @@ service /v1 on ep0 {
         decimal startTime = time:monotonicNow();
         EntityList|error entityList = ep->ReadEntities(request);
         decimal endTime = time:monotonicNow();
-        decimal executionTimeMs = (endTime - startTime) / 1000000.0;
-        io:println(string `[gRPC ReadEntities] Execution time: ${executionTimeMs.toString()} ms`);
+        decimal executionTimeMs = (endTime - startTime) * 1000.0;
         if entityList is error {
+            io:println(string `[gRPC ReadEntities] Execution time: ${executionTimeMs.toString()} ms (failed)`);
             io:println(string `Error reading entities: ${entityList.message()}`);
+            
+            decimal functionEndTime = time:monotonicNow();
+            decimal functionExecutionTimeMs = (functionEndTime - functionStartTime) * 1000.0;
+            io:println(string `[entities/search] Overall execution time: ${functionExecutionTimeMs.toString()} ms (failed)`);
             
             return <http:BadRequest> {
                 body: {
@@ -431,6 +440,7 @@ service /v1 on ep0 {
                 }
             };
         }
+        io:println(string `[gRPC ReadEntities] Execution time: ${executionTimeMs.toString()} ms`);
 
         // Map the result to the expected response format
         record {string id?; record {string major?; string minor?;} kind?; string name?; string created?; string terminated?;}[] response = [];
@@ -443,6 +453,11 @@ service /v1 on ep0 {
                 terminated: entity.terminated
             });
         }
+        
+        decimal functionEndTime = time:monotonicNow();
+        decimal functionExecutionTimeMs = (functionEndTime - functionStartTime) * 1000.0;
+        io:println(string `[entities/search] Overall execution time: ${functionExecutionTimeMs.toString()} ms`);
+        
         return <InlineResponse2001Ok> {
             body: {
                 body: response
