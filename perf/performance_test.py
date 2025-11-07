@@ -103,6 +103,104 @@ def run_curl_test(url, debug=False):
         print(f"Error running curl: {e}")
         return None
 
+def run_curl_search_test(base_url, endpoint="v1/entities/search", debug=False):
+    """Run a single curl search test and parse the timing results
+    
+    Args:
+        base_url: Base URL of the API (e.g., https://...choreoapis.dev/data-platform/query-api-test/v1.0)
+        endpoint: Endpoint path to append (default: "v1/entities/search")
+        debug: Enable debug output
+    
+    Returns:
+        Dictionary with timing data or None if failed
+    """
+    # Construct full URL by appending endpoint
+    # Ensure base_url doesn't end with / and endpoint doesn't start with /
+    base_url = base_url.rstrip('/')
+    endpoint = endpoint.lstrip('/')
+    full_url = f"{base_url}/{endpoint}"
+    
+    curl_command = [
+        'curl', '-w', '\nnamelookup:%{time_namelookup} connect:%{time_connect} appconnect:%{time_appconnect} starttransfer:%{time_starttransfer} total:%{time_total}\n',
+        '-o', '/dev/null', '-s',
+        '-X', 'POST',
+        full_url,
+        '-H', 'Content-Type: application/json',
+        '-d', json.dumps({
+            "id": "2153-12_dep_89"
+        })
+    ]
+    
+    try:
+        result = subprocess.run(curl_command, capture_output=True, text=True, timeout=30)
+        
+        if result.returncode != 0:
+            print(f"Error: curl command failed with return code {result.returncode}")
+            print(f"Error output: {result.stderr}")
+            return None
+        
+        # Debug mode: show full response
+        if debug:
+            print(f"\nDebug - Full URL: {full_url}")
+            print(f"Debug - Full response: {result.stdout}")
+            print(f"Debug - Return code: {result.returncode}")
+        
+        # Check if we have timing data
+        has_timing_data = any(line.startswith(('namelookup:', 'connect:', 'appconnect:', 'starttransfer:', 'total:')) for line in result.stdout.split('\n'))
+        
+        if not has_timing_data:
+            # This might be an HTTP error response, let's check
+            if '404' in result.stdout or 'Not Found' in result.stdout:
+                if debug:
+                    print(f"HTTP 404 Error: {result.stdout.strip()}")
+                return None
+            elif '500' in result.stdout or 'Internal Server Error' in result.stdout:
+                if debug:
+                    print(f"Server Error: {result.stdout.strip()}")
+                return None
+            else:
+                if debug:
+                    print(f"Unexpected response: {result.stdout.strip()}")
+                return None
+            
+        # Parse the timing output
+        timing_data = {}
+        lines = result.stdout.strip().split('\n')
+        
+        for line in lines:
+            if line.strip():
+                # Split by spaces to handle multiple timing values on one line
+                parts = line.split()
+                for part in parts:
+                    if ':' in part:
+                        key, value = part.split(':', 1)
+                        key = key.strip()
+                        value = value.strip()
+                        try:
+                            timing_data[key] = float(value)
+                        except ValueError:
+                            if debug:
+                                print(f"Debug - Could not parse timing value: '{key}': '{value}'")
+                            continue
+        
+        if debug:
+            print(f"Debug - Parsed timing data: {timing_data}")
+            
+        # Check if we got at least the total time
+        if 'total' not in timing_data:
+            if debug:
+                print("Debug - No 'total' timing found")
+            return None
+                    
+        return timing_data
+        
+    except subprocess.TimeoutExpired:
+        print("Error: Request timed out")
+        return None
+    except Exception as e:
+        print(f"Error running curl: {e}")
+        return None
+
 def main():
     """Run 20 tests and calculate averages"""
     # Parse command line arguments
@@ -132,7 +230,7 @@ def main():
     for i in range(args.count):
         print(f"Test {i+1:2d}/{args.count}: ", end="", flush=True)
         
-        result = run_curl_test(args.url, debug=args.debug)
+        result = run_curl_search_test(args.url, debug=args.debug)
         
         if result:
             all_results.append(result)

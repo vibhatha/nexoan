@@ -7,6 +7,7 @@ import ballerina/grpc;
 import ballerina/lang.'int as langint;
 import ballerina/io;
 import ballerina/protobuf.types.'any as pbAny;
+import ballerina/time;
 
 // BAL_CONFIG_VAR_CRUDSERVICEURL
 configurable string crudServiceUrl = "http://localhost:50051";
@@ -414,8 +415,12 @@ service /v1 on ep0 {
             output: [] // Return all fields by default
         };
 
-        // Call the ReadEntities method
+        // Call the ReadEntities method with timing
+        decimal startTime = time:monotonicNow();
         EntityList|error entityList = ep->ReadEntities(request);
+        decimal endTime = time:monotonicNow();
+        decimal executionTimeMs = (endTime - startTime) / 1000000.0;
+        io:println(string `[gRPC ReadEntities] Execution time: ${executionTimeMs.toString()} ms`);
         if entityList is error {
             io:println(string `Error reading entities: ${entityList.message()}`);
             

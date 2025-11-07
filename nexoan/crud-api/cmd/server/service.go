@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"lk/datafoundation/crud-api/db/config"
 	pb "lk/datafoundation/crud-api/lk/datafoundation/crud-api"
@@ -102,11 +103,14 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 	}
 
 	// Always fetch basic entity info from Neo4j
+	graphStart := time.Now()
 	kind, name, created, terminated, err := s.neo4jRepo.GetGraphEntity(ctx, req.Entity.Id)
+	graphDuration := time.Since(graphStart)
 	if err != nil {
-		log.Printf("Error fetching entity info: %v", err)
+		log.Printf("[TIMING] Graph query failed in %v: %v", graphDuration, err)
 		// Continue processing as we might still be able to get other information
 	} else {
+		log.Printf("[TIMING] Graph query completed in %v", graphDuration)
 		response.Kind = kind
 		response.Name = name
 		response.Created = created
@@ -126,11 +130,14 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 		case "metadata":
 			log.Printf("[DEBUG] Processing metadata field for entity ID: %s", req.Entity.Id)
 			// Get metadata from MongoDB
+			metadataStart := time.Now()
 			metadata, err := s.mongoRepo.GetMetadata(ctx, req.Entity.Id)
+			metadataDuration := time.Since(metadataStart)
 			if err != nil {
-				log.Printf("Error fetching metadata: %v", err)
+				log.Printf("[TIMING] Metadata failed in %v: %v", metadataDuration, err)
 				// Continue with other fields even if metadata fails
 			} else {
+				log.Printf("[TIMING] Metadata completed in %v", metadataDuration)
 				log.Printf("[DEBUG] Retrieved metadata: %+v", metadata)
 				response.Metadata = metadata
 			}
@@ -138,15 +145,19 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 		case "relationships":
 			// Handle relationships based on the input entity
 			if req.Entity != nil {
+				relationshipsStart := time.Now()
 				if len(req.Entity.Relationships) == 0 {
 					// No filters provided, fetch all relationships for the entity
 					filteredRels, err := s.neo4jRepo.GetFilteredRelationships(ctx, req.Entity.Id, "", "", "", "", "", "", req.ActiveAt)
 					if err != nil {
-						log.Printf("Error fetching related entity IDs for entity %s: %v", req.Entity.Id, err)
+						relationshipsDuration := time.Since(relationshipsStart)
+						log.Printf("[TIMING] Relationships failed in %v: %v", relationshipsDuration, err)
 					} else {
 						for id, relationship := range filteredRels {
 							response.Relationships[id] = relationship
 						}
+						relationshipsDuration := time.Since(relationshipsStart)
+						log.Printf("[TIMING] Relationships completed in %v", relationshipsDuration)
 					}
 				} else {
 					// Call GetFilteredRelationships for each relationship
@@ -154,7 +165,8 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 						log.Printf("Fetching related entity IDs for entity %s with relationship %s and start time %s", req.Entity.Id, rel.Name, rel.StartTime)
 						filteredRels, err := s.neo4jRepo.GetFilteredRelationships(ctx, req.Entity.Id, rel.Id, rel.Name, rel.RelatedEntityId, rel.StartTime, rel.EndTime, rel.Direction, req.ActiveAt)
 						if err != nil {
-							log.Printf("Error fetching related entity IDs for entity %s: %v", req.Entity.Id, err)
+							relationshipsDuration := time.Since(relationshipsStart)
+							log.Printf("[TIMING] Relationships failed in %v: %v", relationshipsDuration, err)
 							return nil, err
 						}
 
@@ -163,6 +175,8 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 							response.Relationships[id] = relationship
 						}
 					}
+					relationshipsDuration := time.Since(relationshipsStart)
+					log.Printf("[TIMING] Relationships completed in %v", relationshipsDuration)
 				}
 			} else {
 				return nil, fmt.Errorf("entity is required to fetch relationships")
@@ -186,7 +200,10 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 			readOptions := engine.NewReadOptions(make(map[string]interface{}), fields...)
 
 			// Process the entity with attributes to get the results map
+			attributesStart := time.Now()
 			attributeResults := processor.ProcessEntityAttributes(ctx, req.Entity, "read", readOptions)
+			attributesDuration := time.Since(attributesStart)
+			log.Printf("[TIMING] Attributes completed in %v", attributesDuration)
 
 			log.Printf("[server.ReadEntity] Successfully processed attributes for entity: %s, results: %+v", req.Entity.Id, attributeResults)
 
@@ -268,7 +285,7 @@ func (s *Server) UpdateEntity(ctx context.Context, req *pb.UpdateEntityRequest) 
 	// Handle attributes
 	processor := engine.NewEntityAttributeProcessor()
 	// Note that in the perspective of the attribute this is a creation operation
-	// The entity is already there but here the attribute is set later. 
+	// The entity is already there but here the attribute is set later.
 	// There is no alignment of update operation with the attribute.
 	// TODO: https://github.com/LDFLK/nexoan/issues/286
 	attributeResults := processor.ProcessEntityAttributes(ctx, req.Entity, "create", nil)
@@ -343,11 +360,15 @@ func (s *Server) ReadEntities(ctx context.Context, req *pb.ReadEntityRequest) (*
 	}
 
 	// Use HandleGraphEntityFilter to get filtered entities
+	graphStart := time.Now()
 	filteredEntities, err := s.neo4jRepo.HandleGraphEntityFilter(ctx, req)
+	graphDuration := time.Since(graphStart)
 	if err != nil {
+		log.Printf("[TIMING] Graph query failed in %v: %v", graphDuration, err)
 		log.Printf("Error filtering entities: %v", err)
 		return nil, err
 	}
+	log.Printf("[TIMING] Graph query completed in %v", graphDuration)
 
 	// Convert filtered entities to pb.Entity format
 	var entities []*pb.Entity
@@ -383,7 +404,7 @@ func (s *Server) ReadEntities(ctx context.Context, req *pb.ReadEntityRequest) (*
 }
 
 // extractFieldsFromAttributes extracts field names from entity attributes based on storage type
-// TODO: Limitation in multi-value attribute reads. 
+// TODO: Limitation in multi-value attribute reads.
 // FIXME: https://github.com/LDFLK/nexoan/issues/285
 func extractFieldsFromAttributes(attributes map[string]*pb.TimeBasedValueList) []string {
 	var fields []string
