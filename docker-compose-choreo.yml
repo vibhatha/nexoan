@@ -35,7 +35,7 @@ services:
     platform: linux/amd64
     build:
       context: ./deployment/choreo/development/docker/neo4j
-      dockerfile: Dockerfile.data
+      dockerfile: Dockerfile
     container_name: neo4j-choreo
     ports:
       - "7474:7474"
@@ -55,6 +55,7 @@ services:
       - NEO4J_server_http_listen__address=0.0.0.0:7474
       # GitHub backup restore configuration
       - GITHUB_BACKUP_REPO=${NEXOAN_GITHUB_BACKUP_REPO:-LDFLK/data-backups}
+      - NEXOAN_DB_BACKUP_VERSION=${NEXOAN_DB_BACKUP_VERSION:-0.0.1}
       - BACKUP_VERSION=${NEXOAN_DB_BACKUP_VERSION:-0.0.1}
       - BACKUP_ENVIRONMENT=${NEXOAN_CHOREO_ENVIRONMENT:-development}
       - RESTORE_FROM_GITHUB=true

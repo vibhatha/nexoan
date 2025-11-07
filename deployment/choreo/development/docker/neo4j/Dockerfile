@@ -60,11 +60,15 @@ log() {\n\
     echo "[$(date +%Y-%m-%d\ %H:%M:%S)] $1: $2"\n\
 }\n\
 \n\
+# Print environment configuration\n\
+log "INFO" "NEXOAN_DB_BACKUP_VERSION=${NEXOAN_DB_BACKUP_VERSION:-not set}"\n\
+log "INFO" "BACKUP_VERSION=${BACKUP_VERSION:-0.0.1}"\n\
+\n\
 # Function to restore from GitHub backup\n\
 restore_from_github() {\n\
-    local github_repo="${GITHUB_BACKUP_REPO:-LDFLK/data-backups}"\n\
-    local version="${BACKUP_VERSION:-0.0.1}"\n\
-    local environment="${BACKUP_ENVIRONMENT:-development}"\n\
+    local github_repo="${GITHUB_BACKUP_REPO}"\n\
+    local version="${BACKUP_VERSION}"\n\
+    local environment="${BACKUP_ENVIRONMENT}"\n\
     \n\
     log "INFO" "Starting GitHub backup restore..."\n\
     log "INFO" "Repository: $github_repo"\n\

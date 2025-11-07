@@ -1,35 +1,25 @@
-# Neo4j Dockerfile with hardcoded build-time data baking
-#
-# This Dockerfile automatically bakes Neo4j data into the image during build
-# from the GitHub backup repository (hardcoded values below).
-#
-# Usage: docker build -f Dockerfile.data -t neo4j-with-data .
-#
-# Start from Ubuntu base image
+# Fixed Neo4j Dockerfile with correct password handling order
+# Key change: password reset happens *after* database restore
+
 FROM ubuntu:22.04
 
-# Install prerequisites
 RUN apt-get update && apt-get install -y \
     wget gnupg2 curl apt-transport-https openjdk-17-jdk \
     && rm -rf /var/lib/apt/lists/*
 
-# Add Neo4j GPG key and repository
 RUN wget -O - https://debian.neo4j.com/neotechnology.gpg.key | apt-key add - \
     && echo "deb https://debian.neo4j.com stable 5" > /etc/apt/sources.list.d/neo4j.list
 
-# Install Neo4j and additional tools for backup restore
 RUN apt-get update && apt-get install -y neo4j=1:5.12.0 \
     wget unzip curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create choreo user and group (required for Choreo platform)
 RUN groupadd -g 10014 choreo && \
     useradd -u 10014 -g choreo -s /bin/bash -m choreouser && \
     mkdir -p /home/choreouser/.cache && \
     chown -R choreouser:choreo /home/choreouser && \
     chmod -R 755 /home/choreouser
 
-# Environment defaults (can be overridden at runtime)
 ENV NEO4J_AUTH=neo4j/neo4j123 \
     NEO4J_server_memory_pagecache_size=1G \
     NEO4J_server_memory_heap_initial__size=1G \
@@ -43,34 +33,16 @@ ENV NEO4J_AUTH=neo4j/neo4j123 \
     NEO4J_server_bolt_listen__address=0.0.0.0:7687 \
     NEO4J_server_http_listen__address=0.0.0.0:7474
 
-# Echo Neo4j credentials during build
-RUN echo "Neo4j Auth: $NEO4J_AUTH" && \
-    username=$(echo "$NEO4J_AUTH" | cut -d'/' -f1) && \
-    password=$(echo "$NEO4J_AUTH" | cut -d'/' -f2) && \
-    echo "Neo4j Username: $username" && \
-    echo "Neo4j Password: $password"
-
-# Create data directories with proper permissions for choreo user
 RUN mkdir -p /neo4j_data /neo4j_logs /neo4j_plugins /var/log/neo4j /var/lib/neo4j/data /var/lib/neo4j/run \
     && chown -R 10014:10014 /neo4j_data /neo4j_logs /neo4j_plugins /var/log/neo4j /var/lib/neo4j /var/lib/neo4j/run \
     && chmod -R 755 /neo4j_data /neo4j_logs /neo4j_plugins /var/log/neo4j /var/lib/neo4j /var/lib/neo4j/run
 
-# Configure Neo4j to listen on all interfaces
 RUN echo "server.default_listen_address=0.0.0.0" >> /etc/neo4j/neo4j.conf \
     && echo "server.bolt.listen_address=0.0.0.0:7687" >> /etc/neo4j/neo4j.conf \
-    && echo "server.http.listen_address=0.0.0.0:7474" >> /etc/neo4j/neo4j.conf \
-    && echo "server.https.listen_address=0.0.0.0:7473" >> /etc/neo4j/neo4j.conf
+    && echo "server.http.listen_address=0.0.0.0:7474" >> /etc/neo4j/neo4j.conf
 
-# Set initial password BEFORE loading data (same as Dockerfile approach)
-RUN if [ -n "${NEO4J_AUTH:-}" ] && [[ "${NEO4J_AUTH}" == neo4j/* ]]; then \
-        password=$(echo "$NEO4J_AUTH" | cut -d'/' -f2) && \
-        echo "Setting initial password during build (before loading data): $password" && \
-        neo4j-admin dbms set-initial-password "$password" || echo "Password setting failed or already set"; \
-    fi
-
-# Build-time data baking: Download and restore data from GitHub during build
-# Hardcoded values for data source
-RUN echo "Baking Neo4j data into image from GitHub..." && \
+# --- Load Data Backup ---
+RUN echo "Restoring Neo4j data from GitHub backup..." && \
     GITHUB_REPO="LDFLK/data-backups" && \
     BACKUP_VERSION="0.0.1" && \
     ENVIRONMENT="development" && \
@@ -80,70 +52,28 @@ RUN echo "Baking Neo4j data into image from GitHub..." && \
     wget -q "$archive_url" -O "$archive_file" && \
     unzip -q "$archive_file" -d "$temp_dir" && \
     archive_dir="$temp_dir/data-backups-$BACKUP_VERSION" && \
-    neo4j_backup="$archive_dir/nexoan/version/$BACKUP_VERSION/$ENVIRONMENT/neo4j/neo4j.dump" && \
-    if [ -f "$neo4j_backup" ]; then \
-        echo "Loading Neo4j data into image..." && \
+    backup_dir="$archive_dir/nexoan/version/$BACKUP_VERSION/$ENVIRONMENT/neo4j" && \
+    if [ -f "$backup_dir/neo4j.dump" ]; then \
         mkdir -p /neo4j_data/databases && \
-        chown -R 10014:10014 /neo4j_data && \
-        neo4j-admin database load neo4j --from-path="$(dirname "$neo4j_backup")" --overwrite-destination=true && \
-        echo "Neo4j data baked successfully!"; \
+        neo4j-admin database load neo4j --from-path="$backup_dir" --overwrite-destination=true; \
     else \
-        echo "WARNING: No backup file found at $neo4j_backup, will use empty database"; \
+        echo "WARNING: Backup file not found, empty DB will be used"; \
     fi && \
     rm -rf "$temp_dir"
 
-# Entrypoint script - simplified for build-time data baking
-RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-# Logging function\n\
-log() {\n\
-    echo "[$(date +%Y-%m-%d\ %H:%M:%S)] $1: $2"\n\
-}\n\
-\n\
-# Echo Neo4j credentials\n\
-log "INFO" "Neo4j Username: neo4j"\n\
-if [ -n "${NEO4J_AUTH:-}" ]; then\n\
-  if [[ "${NEO4J_AUTH}" == neo4j/* ]]; then\n\
-    password="${NEO4J_AUTH#neo4j/}"\n\
-    log "INFO" "Neo4j Password: $password"\n\
-  fi\n\
-fi\n\
-\n\
-# Handle NEO4J_AUTH like the official image\n\
-if [ -n "${NEO4J_AUTH:-}" ]; then\n\
-  if [ "${NEO4J_AUTH}" = "none" ]; then\n\
-    log "INFO" "Disabling authentication..."\n\
-    echo "dbms.security.auth_enabled=false" >> /etc/neo4j/neo4j.conf\n\
-  elif [[ "${NEO4J_AUTH}" == neo4j/* ]]; then\n\
-    password="${NEO4J_AUTH#neo4j/}"\n\
-    log "INFO" "Setting initial password: $password"\n\
-    # Try to set password - this works even if database exists, as long as Neo4j hasn't been started\n\
-    if neo4j-admin dbms set-initial-password "$password" 2>&1; then\n\
-      log "INFO" "Password set successfully"\n\
-    else\n\
-      log "WARNING" "Password setting failed - password may already be set or Neo4j may have been initialized"\n\
-      log "INFO" "Will attempt to change password after Neo4j starts..."\n\
-    fi\n\
-  fi\n\
-fi\n\
-\n\
-log "INFO" "Starting Neo4j with data baked into image..."\n\
-exec neo4j console' > /docker-entrypoint.sh \
-    && chmod +x /docker-entrypoint.sh
+# --- Reset Password AFTER data load ---
+RUN password="${NEO4J_AUTH#neo4j/}" && \
+    neo4j-admin dbms set-initial-password "$password" || true
 
-# Switch to choreo user (required for Choreo platform)
+# Entrypoint
+RUN echo '#!/bin/bash\nset -e\nexec neo4j console' > /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
+
 USER 10014
 
-# Expose ports
 EXPOSE 7474 7687
 
-# Volumes for persistence
 VOLUME ["/neo4j_data", "/neo4j_logs", "/var/lib/neo4j/import", "/neo4j_plugins"]
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:7474 || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD curl -f http://localhost:7474 || exit 1
 
-# Use entrypoint
 CMD ["/docker-entrypoint.sh"]
